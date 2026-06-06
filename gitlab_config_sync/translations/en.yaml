@@ -1,0 +1,107 @@
+---
+configuration:
+  repository_url:
+    name: Repository URL
+    description: >-
+      The GitLab repository to sync with. For token auth use the HTTPS URL
+      (https://gitlab.example.com/you/ha-config.git). For SSH auth use the SSH
+      URL (git@gitlab.example.com:you/ha-config.git).
+  branch:
+    name: Branch
+    description: >-
+      Branch used for backups and restores. If something breaks, edit the files
+      on this branch in GitLab and Home Assistant will pull them back.
+  auth_method:
+    name: Authentication method
+    description: >-
+      "token" uses an HTTPS Personal/Project Access Token (recommended).
+      "ssh" uses a private deploy key.
+  username:
+    name: Username (token auth)
+    description: >-
+      Username for HTTPS token auth. Leave empty to use "oauth2", which works
+      with GitLab access tokens.
+  token:
+    name: Access token (token auth)
+    description: >-
+      GitLab Personal or Project Access Token with "write_repository" scope.
+      Stored securely and never written into the repository.
+  ssh_key:
+    name: SSH private key (ssh auth)
+    description: >-
+      The full private key (including BEGIN/END lines) for an SSH deploy key
+      that has write access to the repository. Only used when auth method is
+      "ssh".
+  commit_name:
+    name: Git commit author name
+    description: Name recorded as the author of backup commits.
+  commit_email:
+    name: Git commit author email
+    description: Email recorded as the author of backup commits.
+  commit_message:
+    name: Commit message prefix
+    description: >-
+      Prefix for automatic backup commit messages. A timestamp is appended
+      automatically.
+  enabled:
+    name: Enable automatic synchronisation
+    description: >-
+      Master switch for scheduled and change-triggered syncing. When off, the
+      dashboard and its manual buttons still work.
+  sync_strategy:
+    name: Sync strategy
+    description: >-
+      "rebase" = two-way sync (back up local changes and pull remote changes).
+      "remote_wins" = mirror the branch down to Home Assistant (GitLab is the
+      source of truth). "local_wins" = backup only (Home Assistant is the
+      source of truth, force-pushes to the branch).
+  sync_interval_minutes:
+    name: Sync interval (minutes)
+    description: >-
+      How often to run an automatic sync. Set to 0 to disable the timer and
+      rely only on change detection and manual syncs.
+  watch_changes:
+    name: Sync when files change
+    description: >-
+      Watch the configuration directory and sync shortly after relevant files
+      change.
+  watch_debounce_seconds:
+    name: Change debounce (seconds)
+    description: >-
+      How long to wait after the last change before syncing, to batch rapid
+      edits into a single commit.
+  restore_on_start:
+    name: Restore from branch on start
+    description: >-
+      When the add-on starts, force the local configuration to match the
+      branch. Useful for recovery setups where GitLab is authoritative.
+  restore_clean:
+    name: Remove stray files on restore
+    description: >-
+      During a restore, also delete untracked files that are not part of the
+      branch. Databases, secrets and .storage are always protected.
+  apply_action:
+    name: After applying remote changes
+    description: >-
+      What to do after a restore/pull changes local files. "none" does nothing,
+      "reload" reloads YAML configuration, "restart" restarts Home Assistant
+      Core.
+  check_config_before_apply:
+    name: Check configuration before reload/restart
+    description: >-
+      Validate the Home Assistant configuration and skip the reload/restart if
+      it is invalid.
+  verify_ssl:
+    name: Verify TLS certificate
+    description: >-
+      Verify the GitLab server TLS certificate. Disable only for a private
+      instance using a self-signed certificate.
+  excludes:
+    name: Extra ignore patterns
+    description: >-
+      Additional .gitignore patterns for files that should never be backed up
+      (one per line).
+  log_level:
+    name: Log level
+    description: Controls the verbosity of the add-on log.
+network: {}

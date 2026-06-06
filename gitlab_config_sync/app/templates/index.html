@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GitLab Config Sync</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --bg-soft: #161c24;
+      --card: #1b2330;
+      --card-2: #202a3a;
+      --border: #2a3647;
+      --text: #e6edf3;
+      --muted: #8b98a9;
+      --accent: #6c8cff;
+      --accent-2: #36c5a8;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --err: #f87171;
+      --danger: #ef4444;
+      --radius: 14px;
+      --shadow: 0 8px 30px rgba(0, 0, 0, .35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 600px at 100% -10%, #1d2740 0%, transparent 60%),
+                  radial-gradient(1000px 500px at -10% 110%, #16302b 0%, transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 24px 20px 60px; }
+
+    header {
+      display: flex; align-items: center; gap: 16px; margin-bottom: 26px;
+    }
+    .logo {
+      width: 52px; height: 52px; border-radius: 14px; flex: none;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      display: grid; place-items: center; box-shadow: var(--shadow);
+    }
+    .logo svg { width: 30px; height: 30px; }
+    .title h1 { margin: 0; font-size: 1.45rem; letter-spacing: .2px; }
+    .title p { margin: 2px 0 0; color: var(--muted); font-size: .9rem; }
+    .spacer { flex: 1; }
+    .version { color: var(--muted); font-size: .8rem; border: 1px solid var(--border);
+      padding: 4px 10px; border-radius: 999px; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+
+    .card {
+      background: linear-gradient(180deg, var(--card) 0%, var(--bg-soft) 140%);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px 18px 16px; box-shadow: var(--shadow);
+    }
+    .card h2 {
+      margin: 0 0 14px; font-size: .78rem; text-transform: uppercase;
+      letter-spacing: 1.4px; color: var(--muted); font-weight: 600;
+    }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      padding: 7px 0; border-bottom: 1px dashed rgba(255,255,255,.05); }
+    .row:last-child { border-bottom: 0; }
+    .row .k { color: var(--muted); font-size: .9rem; }
+    .row .v { font-size: .92rem; text-align: right; word-break: break-word; font-variant-numeric: tabular-nums; }
+    .v.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85rem; }
+
+    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px;
+      border-radius: 999px; font-size: .8rem; font-weight: 600; border: 1px solid transparent; }
+    .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .pill.ok   { color: var(--ok);   background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.25); }
+    .pill.warn { color: var(--warn); background: rgba(251,191,36,.12); border-color: rgba(251,191,36,.25); }
+    .pill.err  { color: var(--err);  background: rgba(248,113,113,.12); border-color: rgba(248,113,113,.25); }
+    .pill.idle { color: var(--muted);background: rgba(139,152,169,.12); border-color: rgba(139,152,169,.22); }
+
+    .summary { display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px 18px; box-shadow: var(--shadow); }
+    .summary .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); flex: none;
+      box-shadow: 0 0 0 4px rgba(255,255,255,.04); }
+    .summary.s-ok   .dot { background: var(--ok);   box-shadow: 0 0 0 4px rgba(52,211,153,.15); }
+    .summary.s-warn .dot { background: var(--warn); box-shadow: 0 0 0 4px rgba(251,191,36,.15); }
+    .summary.s-err  .dot { background: var(--err);  box-shadow: 0 0 0 4px rgba(248,113,113,.15); }
+    .summary .st { font-weight: 600; }
+    .summary .sub { color: var(--muted); font-size: .88rem; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0 8px; }
+    button {
+      font: inherit; font-weight: 600; cursor: pointer; border-radius: 11px;
+      padding: 11px 18px; border: 1px solid var(--border); color: var(--text);
+      background: var(--card-2); transition: transform .05s ease, filter .15s ease, opacity .15s; display: inline-flex; align-items: center; gap: 8px;
+    }
+    button:hover { filter: brightness(1.12); }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    button.primary { background: linear-gradient(135deg, var(--accent), #5a78ee); border-color: transparent; color: #fff; }
+    button.danger  { background: transparent; border-color: rgba(239,68,68,.5); color: #fca5a5; }
+    button.ghost   { background: transparent; }
+    .spin { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+      border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .logwrap { margin-top: 22px; }
+    .logbox {
+      background: #0b0f14; border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px 16px; height: 280px; overflow: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .8rem; color: #c4d0de; white-space: pre-wrap; word-break: break-word;
+    }
+    .logbox .l-error { color: var(--err); }
+    .logbox .l-warn  { color: var(--warn); }
+    .logbox .l-info  { color: #c4d0de; }
+
+    .notice { background: rgba(108,140,255,.08); border: 1px solid rgba(108,140,255,.3);
+      color: #c8d4ff; border-radius: var(--radius); padding: 14px 16px; margin-bottom: 20px; font-size: .92rem; }
+
+    #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+      background: var(--card-2); border: 1px solid var(--border); color: var(--text);
+      padding: 12px 18px; border-radius: 12px; box-shadow: var(--shadow); opacity: 0;
+      transition: opacity .2s, transform .2s; pointer-events: none; max-width: 90vw; }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.ok  { border-color: rgba(52,211,153,.5); }
+    #toast.err { border-color: rgba(248,113,113,.5); }
+    footer { color: var(--muted); font-size: .8rem; text-align: center; margin-top: 34px; }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="6" cy="6" r="2.4"></circle>
+          <circle cx="6" cy="18" r="2.4"></circle>
+          <circle cx="18" cy="9" r="2.4"></circle>
+          <path d="M6 8.4v7.2"></path>
+          <path d="M18 11.4c0 3-2.6 4.6-6 4.6"></path>
+          <path d="M6 11c0-3 2.6-4.6 6-4.6h3.2"></path>
+        </svg>
+      </div>
+      <div class="title">
+        <h1>GitLab Config Sync</h1>
+        <p>Back up &amp; restore your Home Assistant configuration with Git</p>
+      </div>
+      <div class="spacer"></div>
+      <span class="version">v{{ version }}</span>
+    </header>
+
+    <div id="notice" class="notice" style="display:none"></div>
+
+    <div id="summary" class="summary">
+      <span class="dot"></span>
+      <div>
+        <div class="st" id="sum-state">Loading…</div>
+        <div class="sub" id="sum-sub">Contacting the sync engine</div>
+      </div>
+      <div class="spacer"></div>
+      <span id="sum-pill" class="pill idle">unknown</span>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Connection</h2>
+        <div class="row"><span class="k">Repository</span><span class="v mono" id="c-repo">—</span></div>
+        <div class="row"><span class="k">Branch</span><span class="v mono" id="c-branch">—</span></div>
+        <div class="row"><span class="k">Auth method</span><span class="v" id="c-auth">—</span></div>
+        <div class="row"><span class="k">Strategy</span><span class="v" id="c-strategy">—</span></div>
+        <div class="row"><span class="k">Config path</span><span class="v mono" id="c-path">—</span></div>
+      </div>
+
+      <div class="card">
+        <h2>Repository state</h2>
+        <div class="row"><span class="k">Latest commit</span><span class="v mono" id="g-head">—</span></div>
+        <div class="row"><span class="k">Message</span><span class="v" id="g-subject">—</span></div>
+        <div class="row"><span class="k">Local changes</span><span class="v" id="g-dirty">—</span></div>
+        <div class="row"><span class="k">Ahead / behind</span><span class="v mono" id="g-ab">—</span></div>
+      </div>
+
+      <div class="card">
+        <h2>Automation</h2>
+        <div class="row"><span class="k">Auto sync</span><span class="v" id="a-enabled">—</span></div>
+        <div class="row"><span class="k">Interval</span><span class="v" id="a-interval">—</span></div>
+        <div class="row"><span class="k">Watch changes</span><span class="v" id="a-watch">—</span></div>
+        <div class="row"><span class="k">Last run</span><span class="v" id="a-last">—</span></div>
+        <div class="row"><span class="k">After restore</span><span class="v" id="a-apply">—</span></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="btn-sync" class="primary" onclick="doAction('sync', this)">
+        <span class="ico">&#x21bb;</span> Sync / back up now
+      </button>
+      <button id="btn-restore" class="danger" onclick="confirmRestore(this)">
+        <span class="ico">&#x21a9;</span> Restore from branch
+      </button>
+      <button class="ghost" onclick="refresh()">Refresh</button>
+    </div>
+
+    <div class="logwrap">
+      <div class="card" style="padding-bottom:6px">
+        <h2>Activity log</h2>
+        <div id="log" class="logbox">Loading log…</div>
+      </div>
+    </div>
+
+    <footer>
+      GitLab Config Sync · A Home Assistant add-on. Restoring overwrites local
+      configuration with the selected branch.
+    </footer>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    let busy = false;
+
+    function fmtTime(iso) {
+      if (!iso) return "never";
+      const d = new Date(iso);
+      if (isNaN(d)) return iso;
+      return d.toLocaleString();
+    }
+
+    function pill(el, cls, text) {
+      el.className = "pill " + cls;
+      el.textContent = text;
+    }
+
+    function toast(msg, kind) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.className = "show " + (kind || "");
+      setTimeout(() => { t.className = t.className.replace("show", "").trim(); }, 3800);
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch("api/status", { cache: "no-store" });
+        const s = await res.json();
+        render(s);
+      } catch (e) {
+        document.getElementById("sum-state").textContent = "Cannot reach the sync engine";
+      }
+      loadLogs();
+    }
+
+    function render(s) {
+      const notice = document.getElementById("notice");
+      if (!s.configured) {
+        notice.style.display = "block";
+        notice.innerHTML = "<strong>Not configured yet.</strong> Open this add-on's " +
+          "<em>Configuration</em> tab and set your GitLab <code>repository_url</code> " +
+          "and credentials, then restart the add-on.";
+      } else {
+        notice.style.display = "none";
+      }
+
+      // Summary
+      const last = s.last || {};
+      const sum = document.getElementById("summary");
+      const map = { ok: ["s-ok", "ok"], idle: ["", "idle"], conflict: ["s-warn", "warn"],
+                    error: ["s-err", "err"], never: ["", "idle"] };
+      const [scls, pcls] = map[last.result] || ["", "idle"];
+      sum.className = "summary " + scls;
+      document.getElementById("sum-state").textContent =
+        !s.configured ? "Waiting for configuration" :
+        !s.enabled ? "Automatic sync disabled" :
+        last.result === "ok" ? "In sync" :
+        last.result === "conflict" ? "Needs attention — conflict" :
+        last.result === "error" ? "Last operation failed" :
+        last.result === "idle" ? "Idle" : "Ready";
+      document.getElementById("sum-sub").textContent =
+        (last.message ? last.message + " · " : "") + "last run " + fmtTime(last.run) +
+        (last.reason ? " (" + last.reason + ")" : "");
+      pill(document.getElementById("sum-pill"), pcls, last.result || "ready");
+
+      // Connection
+      document.getElementById("c-repo").textContent = s.repository || "—";
+      document.getElementById("c-branch").textContent = s.branch || "—";
+      document.getElementById("c-auth").textContent = s.auth_method || "—";
+      const strat = { rebase: "Two-way (rebase)", remote_wins: "Mirror down (remote wins)",
+                      local_wins: "Backup only (local wins)" };
+      document.getElementById("c-strategy").textContent = strat[s.strategy] || s.strategy || "—";
+      document.getElementById("c-path").textContent = s.config_path || "—";
+
+      // Git state
+      const g = s.git || {};
+      if (g.initialized && g.head) {
+        document.getElementById("g-head").textContent = g.head.short;
+        document.getElementById("g-subject").textContent = g.head.subject || "—";
+      } else {
+        document.getElementById("g-head").textContent = g.initialized ? "(no commits yet)" : "(not initialised)";
+        document.getElementById("g-subject").textContent = "—";
+      }
+      document.getElementById("g-dirty").textContent =
+        !g.initialized ? "—" : (g.dirty ? "Yes — pending backup" : "No — clean");
+      document.getElementById("g-ab").textContent =
+        !g.initialized ? "—" : ("↑" + (g.ahead || 0) + "  ↓" + (g.behind || 0));
+
+      // Automation
+      const a = s.automation || {};
+      document.getElementById("a-enabled").textContent = s.enabled ? "Enabled" : "Disabled";
+      document.getElementById("a-interval").textContent =
+        a.interval_minutes > 0 ? "every " + a.interval_minutes + " min" : "off";
+      document.getElementById("a-watch").textContent =
+        !a.watch_changes ? "off" : (a.watch_running ? "on (active)" : "on (starting…)");
+      document.getElementById("a-last").textContent = fmtTime(last.run);
+      const apply = { none: "do nothing", reload: "reload YAML", restart: "restart Core" };
+      document.getElementById("a-apply").textContent =
+        (apply[s.apply_action] || s.apply_action) +
+        (last.applied ? " · last: " + last.applied : "");
+
+      const rb = document.getElementById("btn-restore");
+      rb.innerHTML = '<span class="ico">&#x21a9;</span> Restore from "' + (s.branch || "branch") + '"';
+    }
+
+    async function loadLogs() {
+      try {
+        const res = await fetch("api/logs", { cache: "no-store" });
+        const data = await res.json();
+        const box = document.getElementById("log");
+        const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 20;
+        box.innerHTML = (data.lines || []).map(line => {
+          let cls = "l-info";
+          if (/ERROR|CRITICAL/.test(line)) cls = "l-error";
+          else if (/WARNING/.test(line)) cls = "l-warn";
+          return '<div class="' + cls + '">' + escapeHtml(line) + "</div>";
+        }).join("");
+        if (atBottom) box.scrollTop = box.scrollHeight;
+      } catch (e) { /* ignore */ }
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    }
+
+    function setBusy(btn, on) {
+      busy = on;
+      document.getElementById("btn-sync").disabled = on;
+      document.getElementById("btn-restore").disabled = on;
+      if (btn) {
+        if (on) { btn.dataset.html = btn.innerHTML; btn.innerHTML = '<span class="spin"></span> Working…'; }
+        else if (btn.dataset.html) { btn.innerHTML = btn.dataset.html; }
+      }
+    }
+
+    async function doAction(kind, btn) {
+      if (busy) return;
+      setBusy(btn, true);
+      try {
+        const res = await fetch("api/" + kind, { method: "POST" });
+        const data = await res.json();
+        if (data.ok) {
+          toast((kind === "restore" ? "Restore" : "Sync") + " complete" +
+                (data.applied ? " · " + data.applied : ""), "ok");
+        } else {
+          toast((data.message || "Operation failed"), "err");
+        }
+      } catch (e) {
+        toast("Request failed: " + e, "err");
+      } finally {
+        setBusy(btn, false);
+        refresh();
+      }
+    }
+
+    function confirmRestore(btn) {
+      if (confirm("Restore overwrites your local Home Assistant configuration with " +
+                  "the remote branch. Continue?")) {
+        doAction("restore", btn);
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 7000);
+  </script>
+</body>
+</html>

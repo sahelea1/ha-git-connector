@@ -1,0 +1,6 @@
+# Web UI
+Flask>=3.0,<4
+waitress>=3.0,<4
+
+# Filesystem change detection
+watchdog>=4.0,<7

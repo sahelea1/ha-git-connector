@@ -1,0 +1,15 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# Bring the container down when the main service exits, instead of silently
+# restarting in a loop. The add-on application is designed to run forever and
+# handle its own errors, so an exit here means we should surface it in the UI.
+# ==============================================================================
+readonly exit_code="${1}"
+
+if [[ "${exit_code}" -eq 0 ]] || [[ "${exit_code}" -eq 256 ]]; then
+    bashio::log.info "GitLab Config Sync stopped cleanly"
+else
+    bashio::log.warning "GitLab Config Sync exited unexpectedly (code ${exit_code})"
+fi
+
+exec /run/s6/basedir/bin/halt

@@ -1,0 +1,78 @@
+---
+name: GitLab Config Sync
+version: "1.0.0"
+slug: gitlab_config_sync
+description: >-
+  Continuously back up your Home Assistant configuration to a private GitLab
+  repository and restore it from a branch when something goes wrong.
+url: https://github.com/sahelea1/ha-git-connector/tree/main/gitlab_config_sync
+advanced: false
+stage: stable
+init: false
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+startup: services
+boot: auto
+# Web dashboard via Ingress (admins only).
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:source-branch-sync
+panel_title: Git Sync
+panel_admin: true
+# Access to the Core API is used (optionally) to validate and reload/restart
+# Home Assistant after a restore.
+homeassistant_api: true
+hassio_api: false
+host_network: false
+# Read/write access to the Home Assistant configuration directory.
+map:
+  - homeassistant_config:rw
+options:
+  repository_url: ""
+  branch: prod
+  auth_method: token
+  username: ""
+  token: ""
+  ssh_key: ""
+  commit_name: Home Assistant
+  commit_email: homeassistant@local
+  commit_message: Home Assistant config backup
+  enabled: true
+  sync_strategy: rebase
+  sync_interval_minutes: 60
+  watch_changes: true
+  watch_debounce_seconds: 30
+  restore_on_start: false
+  restore_clean: false
+  apply_action: none
+  check_config_before_apply: true
+  verify_ssl: true
+  excludes: []
+  log_level: info
+schema:
+  repository_url: url
+  branch: str
+  auth_method: list(token|ssh)
+  username: str?
+  token: password?
+  ssh_key: str?
+  commit_name: str
+  commit_email: str
+  commit_message: str
+  enabled: bool
+  sync_strategy: list(rebase|remote_wins|local_wins)
+  sync_interval_minutes: int(0,1440)
+  watch_changes: bool
+  watch_debounce_seconds: int(5,3600)
+  restore_on_start: bool
+  restore_clean: bool
+  apply_action: list(none|reload|restart)
+  check_config_before_apply: bool
+  verify_ssl: bool
+  excludes:
+    - str
+  log_level: list(trace|debug|info|notice|warning|error|fatal)
