@@ -1,10 +1,10 @@
 #!/command/with-contenv bashio
 # ==============================================================================
-# GitLab Config Sync — service entrypoint
+# Riti Git Sync — service entrypoint
 # Runs the Python application that performs the git synchronisation and serves
 # the Ingress dashboard.
 # ==============================================================================
-bashio::log.info "Starting GitLab Config Sync..."
+bashio::log.info "Starting Riti Git Sync..."
 
 export PYTHONPATH="/usr/src/gitsync"
 export GITSYNC_DATA="/data"

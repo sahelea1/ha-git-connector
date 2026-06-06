@@ -179,6 +179,28 @@ class GitRepo:
         proc = self._run("ls-remote", "--heads", REMOTE, branch, check=False)
         return proc.returncode == 0 and bool(proc.stdout.strip())
 
+    def list_remote_branches(self) -> list[str]:
+        """Return the branch names that exist on ``origin``.
+
+        Uses a direct ``ls-remote`` network call. Returns an empty list if the
+        remote is unreachable so callers never have to handle an exception.
+        """
+        try:
+            proc = self._run("ls-remote", "--heads", REMOTE, check=False)
+        except GitError:
+            return []
+        if proc.returncode != 0:
+            return []
+        branches: list[str] = []
+        for line in proc.stdout.splitlines():
+            line = line.strip()
+            if not line or "\t" not in line:
+                continue
+            ref = line.split("\t", 1)[1].strip()
+            if ref.startswith("refs/heads/"):
+                branches.append(ref[len("refs/heads/"):])
+        return branches
+
     def checkout_force(self, branch: str, start_point: str | None = None) -> None:
         if start_point:
             self._run("checkout", "-f", "-B", branch, start_point)
@@ -255,6 +277,21 @@ class GitRepo:
             args.append("--force-with-lease")
         args += ["-u", REMOTE, branch]
         self._run(*args)
+
+    def promote(self, source_local_branch: str, target_remote_branch: str) -> None:
+        """Publish ``source_local_branch``'s current commit onto a remote branch.
+
+        Pushes ``<source>:<target>`` to origin so ``origin/<target>`` ends up
+        pointing at the same commit as the local source branch. The push is
+        forced so a fast-forward is not required, but ``--force-with-lease`` is
+        used when the target already exists so we never clobber commits that the
+        local repository has not yet seen.
+        """
+        spec = f"{source_local_branch}:{target_remote_branch}"
+        if self.remote_branch_exists(target_remote_branch):
+            self._run("push", "--force-with-lease", REMOTE, spec)
+        else:
+            self._run("push", REMOTE, spec)
 
     def head_info(self) -> HeadInfo | None:
         if not self.has_commits():

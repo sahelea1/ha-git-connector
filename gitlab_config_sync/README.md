@@ -1,6 +1,6 @@
-# GitLab Config Sync
+# Riti Git Sync
 
-![GitLab Config Sync](logo.png)
+![Riti Git Sync](logo.png)
 
 Continuously back up your Home Assistant configuration to a **private GitLab
 repository**, and restore it from a branch when something breaks.
@@ -24,8 +24,11 @@ them back so your system comes back up.
   supported.
 - 🪄 **Safe apply** — optionally validate the configuration and reload or restart
   Home Assistant after a restore.
-- ✨ **Sleek dashboard** — a built-in Ingress panel shows status and offers
-  one-click **Sync** and **Restore**.
+- 🧪 **DEV/PROD environments** — keep a stable `prod` branch and a `dev` sandbox.
+  Switch the active branch Home Assistant runs from, test on `dev`, then promote
+  **DEV → PROD** to publish — all from the dashboard.
+- ✨ **Sleek dashboard** — a built-in Ingress panel (new रीति / crimson editorial
+  theme) shows status and offers one-click **Sync** and **Restore**.
 
 ## Quick start
 
@@ -50,3 +53,19 @@ Home Assistant won't start after a bad edit? Open your repository in GitLab, fix
 the offending file on the `prod` branch, then either press **Restore** in the
 add-on's Web UI or enable `restore_on_start` and restart the add-on. The
 known-good configuration is pulled back into place.
+
+## DEV / PROD environments
+
+`prod` (the `branch` option, default `prod`) is your stable source of truth. A
+separate **DEV** branch (the new `dev_branch` option, default `dev`) is a
+sandbox for experimenting safely.
+
+From the dashboard you can **switch the active environment** — change which
+branch Home Assistant currently runs from. Switch to **DEV**, iterate and test
+for as long as you like, and when you're happy press **Promote DEV → PROD** to
+publish your tested configuration to `prod`.
+
+Branch switching from the dashboard is governed by the new `allow_branch_switch`
+option (default `true`). When you switch or promote, the configured
+`apply_action` (`none` / `reload` / `restart`) is honoured so the new branch can
+be applied automatically. See the **Documentation** tab for the full workflow.

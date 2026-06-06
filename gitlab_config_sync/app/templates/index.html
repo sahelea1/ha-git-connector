@@ -3,151 +3,306 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GitLab Config Sync</title>
+  <title>Riti Git Sync</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0f1419;
-      --bg-soft: #161c24;
-      --card: #1b2330;
-      --card-2: #202a3a;
-      --border: #2a3647;
-      --text: #e6edf3;
-      --muted: #8b98a9;
-      --accent: #6c8cff;
-      --accent-2: #36c5a8;
-      --ok: #34d399;
-      --warn: #fbbf24;
-      --err: #f87171;
-      --danger: #ef4444;
-      --radius: 14px;
-      --shadow: 0 8px 30px rgba(0, 0, 0, .35);
+      --bg: #0a0506;
+      --bg-2: #120a0b;
+      --card: #160d0e;
+      --card-2: #1d1213;
+      --border: rgba(224, 210, 205, .10);
+      --border-warm: rgba(211, 75, 66, .22);
+      --text: #ece3e1;
+      --muted: #9a8b88;
+      --faint: #6f615f;
+      --accent: #d34b42;
+      --accent-2: #e0524d;
+      --accent-deep: #9e2f2a;
+      --ok: #57b894;
+      --warn: #d9a441;
+      --err: #e0524d;
+      --danger: #c0392b;
+      --radius: 15px;
+      --shadow: 0 16px 50px rgba(0, 0, 0, .55);
+      --serif: "Cormorant Garamond", "Noto Serif Devanagari", Georgia, "Times New Roman", serif;
+      --mono: "Space Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
     }
     * { box-sizing: border-box; }
+    html, body { background: var(--bg); }
     body {
       margin: 0;
-      background: radial-gradient(1200px 600px at 100% -10%, #1d2740 0%, transparent 60%),
-                  radial-gradient(1000px 500px at -10% 110%, #16302b 0%, transparent 55%),
-                  var(--bg);
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+      font-family: var(--sans);
       -webkit-font-smoothing: antialiased;
-      line-height: 1.5;
+      line-height: 1.55;
+      position: relative;
+      min-height: 100vh;
     }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 24px 20px 60px; }
+    /* Background atmosphere: oxblood glows + faint technical grid + concentric rings */
+    body::before {
+      content: "";
+      position: fixed; inset: 0; z-index: -2; pointer-events: none;
+      background:
+        radial-gradient(900px 520px at 78% -8%, rgba(176, 44, 38, .22) 0%, transparent 62%),
+        radial-gradient(760px 460px at -10% 8%, rgba(120, 28, 26, .16) 0%, transparent 60%),
+        radial-gradient(1000px 700px at 50% 120%, rgba(85, 20, 20, .12) 0%, transparent 60%),
+        var(--bg);
+    }
+    body::after {
+      content: "";
+      position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .5;
+      background-image:
+        linear-gradient(rgba(224, 200, 196, .025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(224, 200, 196, .025) 1px, transparent 1px);
+      background-size: 46px 46px;
+      -webkit-mask-image: radial-gradient(1100px 700px at 70% 0%, #000 0%, transparent 75%);
+      mask-image: radial-gradient(1100px 700px at 70% 0%, #000 0%, transparent 75%);
+    }
+    .rings {
+      position: fixed; top: -260px; right: -180px; width: 720px; height: 720px;
+      z-index: -1; pointer-events: none; opacity: .35;
+    }
+    .rings span {
+      position: absolute; inset: 0; margin: auto; border-radius: 50%;
+      border: 1px solid rgba(211, 75, 66, .14);
+    }
+    .rings span:nth-child(1) { width: 720px; height: 720px; }
+    .rings span:nth-child(2) { width: 540px; height: 540px; }
+    .rings span:nth-child(3) { width: 360px; height: 360px; }
+    .rings span:nth-child(4) { width: 200px; height: 200px; }
 
-    header {
-      display: flex; align-items: center; gap: 16px; margin-bottom: 26px;
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 34px 22px 70px; position: relative; }
+
+    /* ===== Header / wordmark ===== */
+    header { display: flex; align-items: center; gap: 18px; margin-bottom: 14px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: baseline; gap: 14px; }
+    .devanagari {
+      font-family: var(--serif);
+      font-size: 2.9rem; line-height: 1; color: var(--accent);
+      font-weight: 600; text-shadow: 0 0 26px rgba(211, 75, 66, .45);
     }
-    .logo {
-      width: 52px; height: 52px; border-radius: 14px; flex: none;
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
-      display: grid; place-items: center; box-shadow: var(--shadow);
+    .wordmark { display: flex; flex-direction: column; gap: 2px; }
+    .wordmark .name {
+      font-family: var(--serif); font-size: 2.1rem; line-height: 1; font-weight: 600;
+      letter-spacing: .5px;
     }
-    .logo svg { width: 30px; height: 30px; }
-    .title h1 { margin: 0; font-size: 1.45rem; letter-spacing: .2px; }
-    .title p { margin: 2px 0 0; color: var(--muted); font-size: .9rem; }
+    .wordmark .name .accent { color: var(--accent); }
+    .wordmark .name .dot { color: var(--accent); }
+    .wordmark .eyebrow {
+      font-family: var(--mono); font-size: .62rem; text-transform: uppercase;
+      letter-spacing: 3.5px; color: var(--faint);
+    }
     .spacer { flex: 1; }
-    .version { color: var(--muted); font-size: .8rem; border: 1px solid var(--border);
-      padding: 4px 10px; border-radius: 999px; }
+    .version {
+      font-family: var(--mono); color: var(--muted); font-size: .68rem;
+      border: 1px solid var(--border-warm); padding: 5px 12px; border-radius: 999px;
+      letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap;
+    }
+    .tagline {
+      font-family: var(--serif); font-style: italic; font-size: 1.15rem; color: var(--muted);
+      margin: 0 0 30px; max-width: 640px;
+    }
 
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    /* ===== Section eyebrows ===== */
+    .eyebrow-label {
+      font-family: var(--mono); font-size: .64rem; text-transform: uppercase;
+      letter-spacing: 2.8px; color: var(--faint); margin: 0 0 12px;
+    }
 
+    /* ===== Cards ===== */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; }
     .card {
-      background: linear-gradient(180deg, var(--card) 0%, var(--bg-soft) 140%);
+      background: linear-gradient(180deg, var(--card-2) 0%, var(--card) 120%);
       border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 18px 18px 16px; box-shadow: var(--shadow);
+      padding: 20px 20px 16px; box-shadow: var(--shadow);
     }
     .card h2 {
-      margin: 0 0 14px; font-size: .78rem; text-transform: uppercase;
-      letter-spacing: 1.4px; color: var(--muted); font-weight: 600;
+      margin: 0 0 16px; font-family: var(--mono); font-size: .66rem; text-transform: uppercase;
+      letter-spacing: 2.6px; color: var(--faint); font-weight: 400;
     }
-    .row { display: flex; justify-content: space-between; align-items: center; gap: 12px;
-      padding: 7px 0; border-bottom: 1px dashed rgba(255,255,255,.05); }
+    .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+      padding: 8px 0; border-bottom: 1px solid rgba(224, 200, 196, .05); }
     .row:last-child { border-bottom: 0; }
-    .row .k { color: var(--muted); font-size: .9rem; }
-    .row .v { font-size: .92rem; text-align: right; word-break: break-word; font-variant-numeric: tabular-nums; }
-    .v.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85rem; }
+    .row .k { color: var(--muted); font-size: .82rem; font-family: var(--sans); }
+    .row .v { font-size: 1rem; text-align: right; word-break: break-word; font-variant-numeric: tabular-nums;
+      font-family: var(--serif); color: var(--text); }
+    .v.mono { font-family: var(--mono); font-size: .78rem; letter-spacing: .2px; }
 
-    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px;
-      border-radius: 999px; font-size: .8rem; font-weight: 600; border: 1px solid transparent; }
-    .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-    .pill.ok   { color: var(--ok);   background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.25); }
-    .pill.warn { color: var(--warn); background: rgba(251,191,36,.12); border-color: rgba(251,191,36,.25); }
-    .pill.err  { color: var(--err);  background: rgba(248,113,113,.12); border-color: rgba(248,113,113,.25); }
-    .pill.idle { color: var(--muted);background: rgba(139,152,169,.12); border-color: rgba(139,152,169,.22); }
+    /* ===== Status pills ===== */
+    .pill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px;
+      border-radius: 999px; font-family: var(--mono); font-size: .64rem; text-transform: uppercase;
+      letter-spacing: 1.6px; font-weight: 700; border: 1px solid transparent; }
+    .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+      box-shadow: 0 0 8px currentColor; }
+    .pill.ok   { color: var(--ok);   background: rgba(87, 184, 148, .10); border-color: rgba(87, 184, 148, .28); }
+    .pill.warn { color: var(--warn); background: rgba(217, 164, 65, .10); border-color: rgba(217, 164, 65, .28); }
+    .pill.err  { color: var(--err);  background: rgba(224, 82, 77, .12); border-color: rgba(224, 82, 77, .30); }
+    .pill.idle { color: var(--muted);background: rgba(154, 139, 136, .08); border-color: rgba(154, 139, 136, .22); }
 
-    .summary { display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
-      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 16px 18px; box-shadow: var(--shadow); }
+    /* ===== Hero summary ===== */
+    .summary { display: flex; align-items: center; gap: 16px; margin-bottom: 16px;
+      background: linear-gradient(180deg, var(--card-2) 0%, var(--card) 130%);
+      border: 1px solid var(--border-warm); border-radius: var(--radius);
+      padding: 18px 22px; box-shadow: var(--shadow); }
     .summary .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); flex: none;
-      box-shadow: 0 0 0 4px rgba(255,255,255,.04); }
-    .summary.s-ok   .dot { background: var(--ok);   box-shadow: 0 0 0 4px rgba(52,211,153,.15); }
-    .summary.s-warn .dot { background: var(--warn); box-shadow: 0 0 0 4px rgba(251,191,36,.15); }
-    .summary.s-err  .dot { background: var(--err);  box-shadow: 0 0 0 4px rgba(248,113,113,.15); }
-    .summary .st { font-weight: 600; }
-    .summary .sub { color: var(--muted); font-size: .88rem; }
+      box-shadow: 0 0 0 5px rgba(255,255,255,.03); }
+    .summary.s-ok   .dot { background: var(--ok);   box-shadow: 0 0 0 5px rgba(87,184,148,.14), 0 0 14px var(--ok); }
+    .summary.s-warn .dot { background: var(--warn); box-shadow: 0 0 0 5px rgba(217,164,65,.14), 0 0 14px var(--warn); }
+    .summary.s-err  .dot { background: var(--err);  box-shadow: 0 0 0 5px rgba(224,82,77,.16), 0 0 14px var(--err); }
+    .summary .st { font-family: var(--serif); font-size: 1.45rem; line-height: 1.1; }
+    .summary .sub { color: var(--muted); font-size: .8rem; font-family: var(--mono); letter-spacing: .3px; margin-top: 3px; }
 
-    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0 8px; }
-    button {
-      font: inherit; font-weight: 600; cursor: pointer; border-radius: 11px;
-      padding: 11px 18px; border: 1px solid var(--border); color: var(--text);
-      background: var(--card-2); transition: transform .05s ease, filter .15s ease, opacity .15s; display: inline-flex; align-items: center; gap: 8px;
+    /* ===== Environment / branch switching ===== */
+    .env { margin-bottom: 16px;
+      background: linear-gradient(180deg, var(--card-2) 0%, var(--card) 130%);
+      border: 1px solid var(--border-warm); border-radius: var(--radius);
+      padding: 20px 22px 18px; box-shadow: var(--shadow); }
+    .env-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+    .env-head .env-active {
+      font-family: var(--serif); font-size: 1.05rem; color: var(--muted);
     }
-    button:hover { filter: brightness(1.12); }
-    button:active { transform: translateY(1px); }
-    button:disabled { opacity: .55; cursor: not-allowed; }
-    button.primary { background: linear-gradient(135deg, var(--accent), #5a78ee); border-color: transparent; color: #fff; }
-    button.danger  { background: transparent; border-color: rgba(239,68,68,.5); color: #fca5a5; }
-    button.ghost   { background: transparent; }
-    .spin { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+    .env-head .env-active b { color: var(--accent); font-weight: 600; }
+
+    .segmented { display: inline-flex; padding: 5px; gap: 5px; border-radius: 12px;
+      border: 1px solid var(--border); background: rgba(0,0,0,.30); margin-top: 14px; }
+    .seg {
+      font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: 1.6px;
+      cursor: pointer; border: 1px solid transparent; background: transparent; color: var(--muted);
+      padding: 9px 18px; border-radius: 9px; transition: all .18s ease; display: flex; flex-direction: column;
+      align-items: center; gap: 3px; min-width: 120px;
+    }
+    .seg .seg-tag { font-size: .56rem; letter-spacing: 2px; color: var(--faint); }
+    .seg:hover:not(.active):not(:disabled) { color: var(--text); background: rgba(224,200,196,.04); }
+    .seg.active { color: #fff; }
+    .seg.active.prod { background: linear-gradient(180deg, rgba(87,184,148,.18), rgba(87,184,148,.06));
+      border-color: rgba(87,184,148,.4); box-shadow: 0 0 18px rgba(87,184,148,.22); }
+    .seg.active.prod .seg-tag { color: var(--ok); }
+    .seg.active.dev { background: linear-gradient(180deg, rgba(211,75,66,.22), rgba(211,75,66,.07));
+      border-color: rgba(211,75,66,.5); box-shadow: 0 0 20px rgba(211,75,66,.30); }
+    .seg.active.dev .seg-tag { color: var(--accent); }
+    .seg:disabled { cursor: not-allowed; }
+
+    .dev-banner { display: none; align-items: center; gap: 12px; margin-top: 16px;
+      background: linear-gradient(90deg, rgba(158,47,42,.30), rgba(120,28,26,.12));
+      border: 1px solid rgba(211,75,66,.45); border-radius: 11px; padding: 12px 16px;
+      box-shadow: inset 0 0 30px rgba(211,75,66,.10); }
+    .dev-banner.show { display: flex; }
+    .dev-banner .badge { font-family: var(--mono); font-size: .62rem; letter-spacing: 2px;
+      text-transform: uppercase; font-weight: 700; color: #ffd9d6;
+      background: rgba(211,75,66,.30); border: 1px solid rgba(211,75,66,.5);
+      padding: 4px 9px; border-radius: 6px; white-space: nowrap; }
+    .dev-banner .badge::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); box-shadow: 0 0 8px var(--accent); margin-right: 6px; vertical-align: middle;
+      animation: pulse 1.6s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+    .dev-banner .txt { font-family: var(--serif); font-style: italic; font-size: 1rem; color: #f0d6d3; }
+
+    .env-controls { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+    .apply-pick { display: inline-flex; align-items: center; gap: 9px; }
+    .apply-pick label { font-family: var(--mono); font-size: .6rem; text-transform: uppercase;
+      letter-spacing: 2px; color: var(--faint); }
+    select.apply {
+      font-family: var(--mono); font-size: .68rem; letter-spacing: 1px; text-transform: uppercase;
+      background: rgba(0,0,0,.35); color: var(--text); border: 1px solid var(--border);
+      border-radius: 9px; padding: 9px 12px; cursor: pointer;
+    }
+    select.apply:focus { outline: none; border-color: var(--border-warm); }
+    .env-disabled-note { font-family: var(--mono); font-size: .64rem; letter-spacing: 1px;
+      color: var(--faint); margin-top: 14px; text-transform: uppercase; }
+
+    /* ===== Buttons ===== */
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 26px 0 8px; }
+    button {
+      font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: 1.8px;
+      cursor: pointer; border-radius: 11px; padding: 13px 20px;
+      border: 1px solid var(--border-warm); color: var(--text);
+      background: rgba(224, 200, 196, .03);
+      transition: transform .05s ease, background .18s ease, border-color .18s, box-shadow .18s, opacity .15s;
+      display: inline-flex; align-items: center; gap: 9px;
+    }
+    button:hover:not(:disabled) { background: rgba(211,75,66,.08); border-color: rgba(211,75,66,.4); }
+    button:active:not(:disabled) { transform: translateY(1px); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    button.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-deep)); border-color: transparent; color: #fff;
+      box-shadow: 0 0 22px rgba(211,75,66,.25);
+    }
+    button.primary:hover:not(:disabled) { background: linear-gradient(135deg, var(--accent-2), var(--accent)); box-shadow: 0 0 28px rgba(211,75,66,.40); }
+    button.danger { background: transparent; border-color: rgba(192,57,43,.55); color: #f0a8a2; }
+    button.danger:hover:not(:disabled) { background: rgba(192,57,43,.12); border-color: rgba(192,57,43,.8); }
+    button.promote {
+      background: linear-gradient(135deg, var(--accent-deep), #6e1f1c); border-color: rgba(211,75,66,.6); color: #fff;
+      box-shadow: 0 0 18px rgba(158,47,42,.3);
+    }
+    button.promote:hover:not(:disabled) { box-shadow: 0 0 26px rgba(158,47,42,.5); }
+    button.ghost { background: transparent; border-color: var(--border); color: var(--muted); }
+    button.ghost:hover:not(:disabled) { color: var(--text); border-color: var(--border-warm); background: transparent; }
+    .spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
       border-radius: 50%; animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .logwrap { margin-top: 22px; }
+    /* ===== Log ===== */
+    .logwrap { margin-top: 24px; }
     .logbox {
-      background: #0b0f14; border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 14px 16px; height: 280px; overflow: auto;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: .8rem; color: #c4d0de; white-space: pre-wrap; word-break: break-word;
+      background: #08090a; border: 1px solid var(--border); border-radius: 11px;
+      padding: 14px 16px; height: 290px; overflow: auto;
+      font-family: var(--mono); font-size: .72rem; color: #b9aca9; white-space: pre-wrap; word-break: break-word;
+      line-height: 1.7;
     }
     .logbox .l-error { color: var(--err); }
     .logbox .l-warn  { color: var(--warn); }
-    .logbox .l-info  { color: #c4d0de; }
+    .logbox .l-info  { color: #b9aca9; }
 
-    .notice { background: rgba(108,140,255,.08); border: 1px solid rgba(108,140,255,.3);
-      color: #c8d4ff; border-radius: var(--radius); padding: 14px 16px; margin-bottom: 20px; font-size: .92rem; }
+    /* ===== Notice ===== */
+    .notice { background: rgba(211,75,66,.07); border: 1px solid rgba(211,75,66,.30);
+      color: #f0d6d3; border-radius: var(--radius); padding: 16px 18px; margin-bottom: 20px;
+      font-size: .92rem; }
+    .notice code { font-family: var(--mono); font-size: .82em; color: var(--accent-2); }
 
-    #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
-      background: var(--card-2); border: 1px solid var(--border); color: var(--text);
-      padding: 12px 18px; border-radius: 12px; box-shadow: var(--shadow); opacity: 0;
-      transition: opacity .2s, transform .2s; pointer-events: none; max-width: 90vw; }
+    /* ===== Toast ===== */
+    #toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px);
+      background: var(--card-2); border: 1px solid var(--border-warm); color: var(--text);
+      padding: 13px 20px; border-radius: 12px; box-shadow: var(--shadow); opacity: 0;
+      transition: opacity .22s, transform .22s; pointer-events: none; max-width: 90vw;
+      font-family: var(--mono); font-size: .74rem; letter-spacing: .3px; }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    #toast.ok  { border-color: rgba(52,211,153,.5); }
-    #toast.err { border-color: rgba(248,113,113,.5); }
-    footer { color: var(--muted); font-size: .8rem; text-align: center; margin-top: 34px; }
+    #toast.ok  { border-color: rgba(87,184,148,.55); }
+    #toast.err { border-color: rgba(224,82,77,.6); }
+
+    footer { color: var(--faint); font-size: .76rem; text-align: center; margin-top: 40px;
+      font-family: var(--mono); letter-spacing: .6px; line-height: 1.8; }
     a { color: var(--accent); }
+
+    @media (max-width: 560px) {
+      .devanagari { font-size: 2.3rem; }
+      .wordmark .name { font-size: 1.6rem; }
+      .segmented { width: 100%; }
+      .seg { flex: 1; min-width: 0; }
+      .summary .st { font-size: 1.2rem; }
+    }
   </style>
 </head>
 <body>
+  <div class="rings" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+
   <div class="wrap">
     <header>
-      <div class="logo" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="6" cy="6" r="2.4"></circle>
-          <circle cx="6" cy="18" r="2.4"></circle>
-          <circle cx="18" cy="9" r="2.4"></circle>
-          <path d="M6 8.4v7.2"></path>
-          <path d="M18 11.4c0 3-2.6 4.6-6 4.6"></path>
-          <path d="M6 11c0-3 2.6-4.6 6-4.6h3.2"></path>
-        </svg>
-      </div>
-      <div class="title">
-        <h1>GitLab Config Sync</h1>
-        <p>Back up &amp; restore your Home Assistant configuration with Git</p>
+      <div class="brand">
+        <span class="devanagari" aria-hidden="true">रीति</span>
+        <div class="wordmark">
+          <span class="eyebrow">riti git sync</span>
+          <span class="name">Riti <span class="accent">Git</span> Sync<span class="dot">.</span></span>
+        </div>
       </div>
       <div class="spacer"></div>
       <span class="version">v{{ version }}</span>
     </header>
+
+    <p class="tagline">Back up &amp; restore your Home Assistant configuration with Git — elegantly versioned.</p>
 
     <div id="notice" class="notice" style="display:none"></div>
 
@@ -161,10 +316,53 @@
       <span id="sum-pill" class="pill idle">unknown</span>
     </div>
 
+    <!-- Active Environment -->
+    <div id="env" class="env" style="display:none">
+      <div class="env-head">
+        <p class="eyebrow-label" style="margin:0">Active Environment</p>
+        <span class="env-active" id="env-active-text"></span>
+      </div>
+
+      <div class="segmented" id="segmented" role="group" aria-label="Environment switch">
+        <button type="button" class="seg prod" id="seg-prod" onclick="switchTo('prod')">
+          <span class="seg-tag">Production</span>
+          <span class="seg-name" id="seg-prod-name">prod</span>
+        </button>
+        <button type="button" class="seg dev" id="seg-dev" onclick="switchTo('dev')">
+          <span class="seg-tag">Development</span>
+          <span class="seg-name" id="seg-dev-name">dev</span>
+        </button>
+      </div>
+
+      <div class="dev-banner" id="dev-banner">
+        <span class="badge">Running on Dev</span>
+        <span class="txt">Changes are sandboxed — production is untouched.</span>
+      </div>
+
+      <div class="env-controls" id="env-controls">
+        <div class="apply-pick">
+          <label for="apply-mode">Apply</label>
+          <select class="apply" id="apply-mode">
+            <option value="none">None</option>
+            <option value="reload">Reload YAML</option>
+            <option value="restart">Restart Core</option>
+          </select>
+        </div>
+        <button type="button" class="promote" id="btn-promote" onclick="confirmPromote(this)" style="display:none">
+          Promote Dev &#8594; Prod
+        </button>
+      </div>
+
+      <div class="env-disabled-note" id="env-disabled-note" style="display:none">
+        Branch switching is disabled by add-on configuration.
+      </div>
+    </div>
+
     <div class="grid">
       <div class="card">
         <h2>Connection</h2>
         <div class="row"><span class="k">Repository</span><span class="v mono" id="c-repo">—</span></div>
+        <div class="row"><span class="k">Active branch</span><span class="v mono" id="c-active">—</span></div>
         <div class="row"><span class="k">Branch</span><span class="v mono" id="c-branch">—</span></div>
         <div class="row"><span class="k">Auth method</span><span class="v" id="c-auth">—</span></div>
         <div class="row"><span class="k">Strategy</span><span class="v" id="c-strategy">—</span></div>
@@ -191,24 +389,24 @@
 
     <div class="actions">
       <button id="btn-sync" class="primary" onclick="doAction('sync', this)">
-        <span class="ico">&#x21bb;</span> Sync / back up now
+        <span class="ico">&#x21bb;</span> Sync / Back Up Now
       </button>
       <button id="btn-restore" class="danger" onclick="confirmRestore(this)">
-        <span class="ico">&#x21a9;</span> Restore from branch
+        <span class="ico">&#x21a9;</span> Restore From Branch
       </button>
       <button class="ghost" onclick="refresh()">Refresh</button>
     </div>
 
     <div class="logwrap">
       <div class="card" style="padding-bottom:6px">
-        <h2>Activity log</h2>
+        <h2>Read The Logs</h2>
         <div id="log" class="logbox">Loading log…</div>
       </div>
     </div>
 
     <footer>
-      GitLab Config Sync · A Home Assistant add-on. Restoring overwrites local
-      configuration with the selected branch.
+      Riti Git Sync · A Home Assistant add-on<br />
+      Restoring overwrites local configuration with the selected branch.
     </footer>
   </div>
 
@@ -216,6 +414,8 @@
 
   <script>
     let busy = false;
+    // Latest status snapshot, used by switch/promote handlers.
+    let lastStatus = {};
 
     function fmtTime(iso) {
       if (!iso) return "never";
@@ -233,13 +433,14 @@
       const t = document.getElementById("toast");
       t.textContent = msg;
       t.className = "show " + (kind || "");
-      setTimeout(() => { t.className = t.className.replace("show", "").trim(); }, 3800);
+      setTimeout(() => { t.className = t.className.replace("show", "").trim(); }, 4200);
     }
 
     async function refresh() {
       try {
         const res = await fetch("api/status", { cache: "no-store" });
         const s = await res.json();
+        lastStatus = s || {};
         render(s);
       } catch (e) {
         document.getElementById("sum-state").textContent = "Cannot reach the sync engine";
@@ -252,7 +453,7 @@
       if (!s.configured) {
         notice.style.display = "block";
         notice.innerHTML = "<strong>Not configured yet.</strong> Open this add-on's " +
-          "<em>Configuration</em> tab and set your GitLab <code>repository_url</code> " +
+          "<em>Configuration</em> tab and set your Git <code>repository_url</code> " +
           "and credentials, then restart the add-on.";
       } else {
         notice.style.display = "none";
@@ -277,8 +478,12 @@
         (last.reason ? " (" + last.reason + ")" : "");
       pill(document.getElementById("sum-pill"), pcls, last.result || "ready");
 
+      // Environment / branch switching
+      renderEnv(s);
+
       // Connection
       document.getElementById("c-repo").textContent = s.repository || "—";
+      document.getElementById("c-active").textContent = s.active_branch || s.branch || "—";
       document.getElementById("c-branch").textContent = s.branch || "—";
       document.getElementById("c-auth").textContent = s.auth_method || "—";
       const strat = { rebase: "Two-way (rebase)", remote_wins: "Mirror down (remote wins)",
@@ -310,11 +515,56 @@
       document.getElementById("a-last").textContent = fmtTime(last.run);
       const apply = { none: "do nothing", reload: "reload YAML", restart: "restart Core" };
       document.getElementById("a-apply").textContent =
-        (apply[s.apply_action] || s.apply_action) +
+        (apply[s.apply_action] || s.apply_action || "—") +
         (last.applied ? " · last: " + last.applied : "");
 
       const rb = document.getElementById("btn-restore");
-      rb.innerHTML = '<span class="ico">&#x21a9;</span> Restore from "' + (s.branch || "branch") + '"';
+      rb.innerHTML = '<span class="ico">&#x21a9;</span> Restore From "' + (s.active_branch || s.branch || "branch") + '"';
+    }
+
+    function renderEnv(s) {
+      const env = document.getElementById("env");
+      const prod = s.prod_branch;
+      const dev = s.dev_branch;
+
+      // If we have no environment info at all, hide the whole section.
+      if (!prod && !dev && !s.allow_branch_switch && typeof s.is_dev === "undefined") {
+        env.style.display = "none";
+        return;
+      }
+      env.style.display = "block";
+
+      const segProd = document.getElementById("seg-prod");
+      const segDev = document.getElementById("seg-dev");
+      const note = document.getElementById("env-disabled-note");
+      const controls = document.getElementById("env-controls");
+      const promoteBtn = document.getElementById("btn-promote");
+      const banner = document.getElementById("dev-banner");
+
+      document.getElementById("seg-prod-name").textContent = prod || "prod";
+      document.getElementById("seg-dev-name").textContent = dev || "dev";
+
+      const isDev = !!s.is_dev;
+      segProd.classList.toggle("active", !isDev);
+      segDev.classList.toggle("active", isDev);
+
+      const active = s.active_branch || (isDev ? dev : prod) || "—";
+      document.getElementById("env-active-text").innerHTML =
+        "Active: <b>" + escapeHtml(active) + "</b>";
+
+      // Dev banner
+      banner.classList.toggle("show", isDev);
+
+      // Allow switching?
+      const allow = !!s.allow_branch_switch;
+      segProd.disabled = busy || !allow || !prod;
+      segDev.disabled = busy || !allow || !dev;
+      note.style.display = allow ? "none" : "block";
+      controls.style.display = allow ? "flex" : "none";
+
+      // Promote only meaningful when on dev and switching is allowed.
+      promoteBtn.style.display = (allow && isDev) ? "inline-flex" : "none";
+      promoteBtn.disabled = busy;
     }
 
     async function loadLogs() {
@@ -334,16 +584,31 @@
     }
 
     function escapeHtml(s) {
-      return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    }
+
+    function applyMode() {
+      const el = document.getElementById("apply-mode");
+      return el ? el.value : "none";
     }
 
     function setBusy(btn, on) {
       busy = on;
       document.getElementById("btn-sync").disabled = on;
       document.getElementById("btn-restore").disabled = on;
+      const segProd = document.getElementById("seg-prod");
+      const segDev = document.getElementById("seg-dev");
+      const promote = document.getElementById("btn-promote");
+      // While busy, lock the env controls; renderEnv() restores correct state afterwards.
+      if (on) { segProd.disabled = true; segDev.disabled = true; promote.disabled = true; }
       if (btn) {
-        if (on) { btn.dataset.html = btn.innerHTML; btn.innerHTML = '<span class="spin"></span> Working…'; }
-        else if (btn.dataset.html) { btn.innerHTML = btn.dataset.html; }
+        if (on) {
+          btn.dataset.html = btn.innerHTML;
+          btn.innerHTML = '<span class="spin"></span> Working…';
+        } else if (btn.dataset.html) {
+          btn.innerHTML = btn.dataset.html;
+          delete btn.dataset.html;
+        }
       }
     }
 
@@ -368,9 +633,87 @@
     }
 
     function confirmRestore(btn) {
+      const branch = lastStatus.active_branch || lastStatus.branch || "the remote branch";
       if (confirm("Restore overwrites your local Home Assistant configuration with " +
-                  "the remote branch. Continue?")) {
+                  '"' + branch + '". Continue?')) {
         doAction("restore", btn);
+      }
+    }
+
+    // ===== Environment switching =====
+    async function switchTo(side) {
+      if (busy) return;
+      const s = lastStatus;
+      if (!s.allow_branch_switch) return;
+      const isDev = !!s.is_dev;
+      // Clicking the side that is already active is a no-op.
+      if ((side === "dev" && isDev) || (side === "prod" && !isDev)) return;
+
+      const target = side === "dev" ? s.dev_branch : s.prod_branch;
+      if (!target) { toast("No " + side + " branch configured", "err"); return; }
+
+      const btn = side === "dev" ? document.getElementById("seg-dev")
+                                 : document.getElementById("seg-prod");
+      const apply = applyMode();
+      const label = side === "dev"
+        ? 'Switch to DEV branch "' + target + '"?'
+        : 'Switch to PROD branch "' + target + '"?';
+      const applyMsg = apply !== "none"
+        ? "\n\nThis will " + (apply === "restart" ? "restart Home Assistant Core." : "reload YAML configuration.")
+        : "";
+      if (!confirm(label + applyMsg)) return;
+
+      setBusy(btn, true);
+      try {
+        const res = await fetch("api/switch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ branch: target, apply: apply })
+        });
+        const data = await res.json();
+        toast(data.message || (data.ok ? "Switched to " + target : "Switch failed"),
+              data.ok ? "ok" : "err");
+      } catch (e) {
+        toast("Switch failed: " + e, "err");
+      } finally {
+        setBusy(btn, false);
+        refresh();
+      }
+    }
+
+    function confirmPromote(btn) {
+      const s = lastStatus;
+      if (!s.allow_branch_switch || !s.is_dev) return;
+      const apply = applyMode();
+      const applyMsg = apply !== "none"
+        ? "\n\nAfter promoting, Home Assistant will " +
+          (apply === "restart" ? "restart Core." : "reload YAML.")
+        : "";
+      if (!confirm('Promote DEV "' + (s.dev_branch || "dev") + '" → PROD "' +
+                   (s.prod_branch || "prod") + '"?\n\n' +
+                   "This merges your sandboxed changes into production." + applyMsg)) {
+        return;
+      }
+      doPromote(btn, apply);
+    }
+
+    async function doPromote(btn, apply) {
+      if (busy) return;
+      setBusy(btn, true);
+      try {
+        const res = await fetch("api/promote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ apply: apply })
+        });
+        const data = await res.json();
+        toast(data.message || (data.ok ? "Promoted to production" : "Promote failed"),
+              data.ok ? "ok" : "err");
+      } catch (e) {
+        toast("Promote failed: " + e, "err");
+      } finally {
+        setBusy(btn, false);
+        refresh();
       }
     }
 

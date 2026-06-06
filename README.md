@@ -1,15 +1,16 @@
-# GitLab Config Sync — Home Assistant Add-on
+# Riti Git Sync — Home Assistant Add-on
 
-A single-purpose Home Assistant add-on repository for **GitLab Config Sync**.
+A single-purpose Home Assistant add-on repository for **Riti Git Sync**.
 
 Continuously back up your Home Assistant configuration (`configuration.yaml`,
 `automations.yaml`, dashboards, packages, …) to a **private GitLab repository**,
-and **restore it from a branch** when something goes wrong.
+and **restore it from a branch** when something goes wrong. Switch between a
+**DEV** sandbox branch and your stable **PROD** branch right from the dashboard.
 
 [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fsahelea1%2Fha-git-connector)
 
 <p align="center">
-  <img src="./gitlab_config_sync/logo.png" alt="GitLab Config Sync" width="540">
+  <img src="./gitlab_config_sync/logo.png" alt="Riti Git Sync" width="540">
 </p>
 
 ## Add this repository
@@ -22,7 +23,7 @@ and **restore it from a branch** when something goes wrong.
    https://github.com/sahelea1/ha-git-connector
    ```
 
-4. Close the dialog. **GitLab Config Sync** now appears at the bottom of the
+4. Close the dialog. **Riti Git Sync** now appears at the bottom of the
    Add-on Store — install it, fill in `repository_url` + `token`, start it and
    open the Web UI.
 
@@ -39,7 +40,10 @@ and **restore it from a branch** when something goes wrong.
   repository.
 - 🧰 Self-hosted / private GitLab friendly (custom domains, self-signed certs).
 - 🪄 Optional config check + reload/restart after a restore.
-- ✨ A clean Ingress dashboard with one-click **Sync** and **Restore**.
+- 🧪 DEV/PROD environments — run from a `dev` sandbox branch, test, then promote
+  **DEV → PROD** to publish, all from the dashboard.
+- ✨ A clean Ingress dashboard (new रीति / crimson editorial theme) with
+  one-click **Sync** and **Restore**.
 
 ➡️ **[Read the full add-on documentation](./gitlab_config_sync/DOCS.md)**
 

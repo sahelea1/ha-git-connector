@@ -31,7 +31,7 @@ COPY app /usr/src/gitsync/gitsync
 ARG BUILD_ARCH
 ARG BUILD_DATE
 ARG BUILD_DESCRIPTION="Back up and restore Home Assistant configuration with a private GitLab repository"
-ARG BUILD_NAME="GitLab Config Sync"
+ARG BUILD_NAME="Riti Git Sync"
 ARG BUILD_REF
 ARG BUILD_REPOSITORY
 ARG BUILD_VERSION

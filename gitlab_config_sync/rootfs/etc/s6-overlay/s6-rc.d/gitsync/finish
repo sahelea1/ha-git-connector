@@ -7,9 +7,9 @@
 readonly exit_code="${1}"
 
 if [[ "${exit_code}" -eq 0 ]] || [[ "${exit_code}" -eq 256 ]]; then
-    bashio::log.info "GitLab Config Sync stopped cleanly"
+    bashio::log.info "Riti Git Sync stopped cleanly"
 else
-    bashio::log.warning "GitLab Config Sync exited unexpectedly (code ${exit_code})"
+    bashio::log.warning "Riti Git Sync exited unexpectedly (code ${exit_code})"
 fi
 
 exec /run/s6/basedir/bin/halt

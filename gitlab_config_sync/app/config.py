@@ -23,6 +23,8 @@ CONFIG_PATH_CANDIDATES = ("/homeassistant", "/config")
 DEFAULTS: dict[str, Any] = {
     "repository_url": "",
     "branch": "prod",
+    "dev_branch": "dev",
+    "allow_branch_switch": True,
     "auth_method": "token",
     "username": "",
     "token": "",
@@ -51,6 +53,8 @@ class Options:
 
     repository_url: str = ""
     branch: str = "prod"
+    dev_branch: str = "dev"
+    allow_branch_switch: bool = True
     auth_method: str = "token"
     username: str = ""
     token: str = ""
@@ -107,6 +111,11 @@ class Options:
     @property
     def configured(self) -> bool:
         return bool(self.repository_url.strip())
+
+    @property
+    def prod_branch(self) -> str:
+        """The stable/source-of-truth branch (alias for ``branch``)."""
+        return self.branch
 
     @property
     def effective_username(self) -> str:

@@ -98,7 +98,7 @@ class Application:
         signal.signal(signal.SIGTERM, self._handle_signal)
         signal.signal(signal.SIGINT, self._handle_signal)
 
-        _LOGGER.info("GitLab Config Sync starting (config dir: %s)", self.options.config_path)
+        _LOGGER.info("Riti Git Sync starting (config dir: %s)", self.options.config_path)
         self._start_web()
         self._start_watcher()
         self._initial_sync()
@@ -130,7 +130,7 @@ class Application:
     def _shutdown(self) -> None:
         if self.watcher:
             self.watcher.stop()
-        _LOGGER.info("GitLab Config Sync stopped")
+        _LOGGER.info("Riti Git Sync stopped")
 
 
 def main() -> None:

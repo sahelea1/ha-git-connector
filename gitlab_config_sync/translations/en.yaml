@@ -11,6 +11,17 @@ configuration:
     description: >-
       Branch used for backups and restores. If something breaks, edit the files
       on this branch in GitLab and Home Assistant will pull them back.
+  dev_branch:
+    name: Development branch
+    description: >-
+      Sandbox branch for testing configuration changes before publishing them.
+      Switch the active environment to this branch from the dashboard, make and
+      test changes, then promote it onto the production branch when ready.
+  allow_branch_switch:
+    name: Allow branch switching
+    description: >-
+      Allow switching the active branch from the dashboard. When off, the
+      environment stays on the production branch.
   auth_method:
     name: Authentication method
     description: >-

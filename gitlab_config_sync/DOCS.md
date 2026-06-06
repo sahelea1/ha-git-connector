@@ -1,4 +1,4 @@
-# GitLab Config Sync — Documentation
+# Riti Git Sync — Documentation
 
 This add-on version-controls your Home Assistant configuration with Git and a
 private GitLab repository. It backs up your `/config` directory automatically
@@ -12,6 +12,7 @@ and lets you restore it from a branch when something goes wrong.
   - [SSH key](#ssh-key)
 - [Configuration options](#configuration-options)
 - [Sync strategies](#sync-strategies)
+- [DEV / PROD environments](#dev--prod-environments)
 - [The recovery workflow](#the-recovery-workflow)
 - [What is and isn't backed up](#what-is-and-isnt-backed-up)
 - [Applying changes (reload / restart)](#applying-changes-reload--restart)
@@ -57,7 +58,7 @@ Home Assistant /config                       GitLab repo
 
 1. Add this repository to the Add-on Store (see the repository
    [README](../README.md)).
-2. Install **GitLab Config Sync**.
+2. Install **Riti Git Sync**.
 3. Open the **Configuration** tab and fill in at least `repository_url` and your
    credentials (see below).
 4. **Start** the add-on and open the **Web UI** to confirm everything is green.
@@ -113,7 +114,9 @@ The private key is written only to the add-on's private `/data` directory with
 | Option | Default | Description |
 | --- | --- | --- |
 | `repository_url` | — | GitLab repo URL. HTTPS for token auth, SSH URL for SSH auth. |
-| `branch` | `prod` | Branch used for backups and restores. |
+| `branch` | `prod` | The stable PROD branch — source of truth for backups and restores. |
+| `dev_branch` | `dev` | The DEV sandbox branch you can switch to and test on before promoting to PROD. |
+| `allow_branch_switch` | `true` | Allow switching the active environment (branch) and promoting DEV → PROD from the dashboard. |
 | `auth_method` | `token` | `token` (HTTPS access token) or `ssh` (deploy key). |
 | `username` | `""` | Username for token auth. Empty → `oauth2` (works with GitLab tokens). |
 | `token` | `""` | GitLab access token with `write_repository` scope. |
@@ -148,6 +151,51 @@ Choose the behaviour that matches who is the "source of truth":
   just follows."
 - **`local_wins` (backup only).** Home Assistant is authoritative. Local state
   is force-pushed to the branch. Use this for pure off-site backups.
+
+## DEV / PROD environments
+
+Riti Git Sync treats two branches as named environments so you can test changes
+safely before they go live:
+
+- **PROD** — the `branch` option (default `prod`). This is your stable source of
+  truth: the configuration Home Assistant runs in production.
+- **DEV** — the `dev_branch` option (default `dev`). A sandbox branch where you
+  can iterate on changes without touching prod.
+
+### Switching the active environment
+
+The **active environment** is the branch Home Assistant currently runs from.
+When `allow_branch_switch` is `true` (the default), the dashboard exposes a
+control to switch between DEV and PROD:
+
+1. Press **Switch to DEV** on the dashboard. The add-on checks out `dev_branch`
+   (creating it from prod on first use) and makes it the active environment.
+2. Edit and test your configuration. Every change is committed and pushed to
+   the DEV branch, exactly as normal syncing works — your prod branch is left
+   untouched.
+3. When you are happy with the result, press **Switch to PROD** to go back, or
+   promote your work (below).
+
+### Promoting DEV → PROD
+
+Once DEV is tested, press **Promote DEV → PROD** on the dashboard. This publishes
+the tested DEV configuration onto the `prod` branch, making it the new source of
+truth. After promoting you typically switch the active environment back to PROD.
+
+### Applying changes on switch / promote
+
+Switching the active environment or promoting changes which files are on disk,
+so the configured `apply_action` is honoured just like a restore:
+
+- `none` — files are changed on disk; you reload/restart yourself.
+- `reload` — call `homeassistant.reload_all` after the switch/promote.
+- `restart` — restart Home Assistant Core.
+
+When `check_config_before_apply` is on, the configuration is validated first and
+the reload/restart is skipped if it is invalid.
+
+> Set `allow_branch_switch: false` if you want to lock the dashboard to a single
+> environment and prevent accidental switches or promotions.
 
 ## The recovery workflow
 
@@ -223,6 +271,8 @@ admins) to see:
   ahead/behind the branch you are;
 - automation status (timer, file-watcher) and the result of the last run;
 - a live activity log;
+- the active environment (DEV or PROD) with **Switch** and **Promote DEV → PROD**
+  controls (when `allow_branch_switch` is enabled);
 - one-click **Sync / back up now** and **Restore from branch** buttons.
 
 ## Security notes

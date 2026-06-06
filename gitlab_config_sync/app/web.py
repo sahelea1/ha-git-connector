@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 from . import __version__
 from .logsetup import recent_logs
@@ -43,12 +43,38 @@ def create_app(manager: SyncManager) -> Flask:
         state = manager.restore(reason="ui")
         return jsonify(_action_response(state))
 
+    @app.post("/api/switch")
+    def api_switch():
+        body = request.get_json(silent=True) or {}
+        branch = str(body.get("branch", "")).strip()
+        apply = _validate_apply(body.get("apply"))
+        if not branch:
+            return jsonify({"ok": False, "message": "Missing 'branch'"}), 400
+        result = manager.switch_branch(branch, apply=apply, reason="ui")
+        return jsonify(result)
+
+    @app.post("/api/promote")
+    def api_promote():
+        body = request.get_json(silent=True) or {}
+        apply = _validate_apply(body.get("apply"))
+        result = manager.promote(apply=apply, reason="ui")
+        return jsonify(result)
+
     @app.errorhandler(500)
     def _server_error(err):  # pragma: no cover - defensive
         _LOGGER.exception("Unhandled error in web request")
         return jsonify({"ok": False, "message": "Internal error"}), 500
 
     return app
+
+
+_VALID_APPLY = ("none", "reload", "restart")
+
+
+def _validate_apply(value) -> str:
+    """Coerce a user-supplied apply action to a known value, defaulting to none."""
+    value = str(value or "none").strip().lower()
+    return value if value in _VALID_APPLY else "none"
 
 
 def _action_response(state: dict) -> dict:

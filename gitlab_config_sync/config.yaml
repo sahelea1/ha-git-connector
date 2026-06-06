@@ -1,6 +1,6 @@
 ---
-name: GitLab Config Sync
-version: "1.0.0"
+name: Riti Git Sync
+version: "1.1.0"
 slug: gitlab_config_sync
 description: >-
   Continuously back up your Home Assistant configuration to a private GitLab
@@ -34,6 +34,8 @@ map:
 options:
   repository_url: ""
   branch: prod
+  dev_branch: dev
+  allow_branch_switch: true
   auth_method: token
   username: ""
   token: ""
@@ -56,6 +58,8 @@ options:
 schema:
   repository_url: url
   branch: str
+  dev_branch: str
+  allow_branch_switch: bool
   auth_method: list(token|ssh)
   username: str?
   token: password?

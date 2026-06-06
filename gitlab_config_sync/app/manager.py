@@ -93,6 +93,20 @@ class SyncManager:
 
         self._state: dict[str, Any] = self._load_state()
 
+        # The branch Home Assistant is currently running. Defaults to the
+        # configured prod/source branch on first run or when unset, preserving
+        # the historical single-branch behaviour for existing users.
+        active = self._state.get("active_branch")
+        if not active:
+            active = options.branch
+            self._state["active_branch"] = active
+            self._save_state()
+        self.active_branch: str = active
+
+        # Best-effort cache of the remote branch list for /api/status so a slow
+        # or unreachable remote never blocks the dashboard.
+        self._branches_cache: list[str] = []
+
     # ------------------------------------------------------------------ wiring
     def set_watcher_status_getter(self, getter) -> None:
         self._watcher_running_getter = getter
@@ -111,6 +125,11 @@ class SyncManager:
                 json.dump(self._state, handle)
         except OSError:
             pass
+
+    def _set_active_branch(self, branch: str) -> None:
+        self.active_branch = branch
+        self._state["active_branch"] = branch
+        self._save_state()
 
     def _record(self, result: str, reason: str, message: str = "", applied: str = "") -> None:
         self._state.update(
@@ -173,12 +192,13 @@ class SyncManager:
         """Initialise/repair the repository. Returns True if an initial restore
         from the remote was performed (i.e. local files changed)."""
         opts = self.options
+        branch = self.active_branch
         self.repo.prepare_ssh_key()
 
         first_run = not self.repo.initialized
         if first_run:
             _LOGGER.info("Initialising git repository in %s", opts.config_path)
-            self.repo.init(opts.branch)
+            self.repo.init(branch)
 
         self.repo.set_identity()
         self.repo.set_remote()
@@ -190,14 +210,14 @@ class SyncManager:
             # Home Assistant picks up the known-good configuration.
             try:
                 self.repo.fetch()
-                if self.repo.remote_branch_exists(opts.branch):
+                if self.repo.remote_branch_exists(branch):
                     _LOGGER.info(
-                        "Existing '%s' branch found on remote — adopting it", opts.branch
+                        "Existing '%s' branch found on remote — adopting it", branch
                     )
                     self.repo.checkout_force(
-                        opts.branch, f"origin/{opts.branch}"
+                        branch, f"origin/{branch}"
                     )
-                    self.repo.set_upstream(opts.branch)
+                    self.repo.set_upstream(branch)
                     if opts.restore_clean:
                         self.repo.clean(opts.excludes)
                     initial_restore = True
@@ -212,29 +232,33 @@ class SyncManager:
         return initial_restore
 
     def _ensure_branch(self) -> None:
-        """Make sure the configured branch is checked out for an existing repo."""
-        opts = self.options
+        """Make sure the active branch is checked out for an existing repo."""
+        branch = self.active_branch
         current = self.repo.current_branch()
-        if current == opts.branch:
+        if current == branch:
             return
         try:
             self.repo.fetch()
         except GitError:
             pass
         try:
-            if self.repo.remote_branch_exists(opts.branch):
-                self.repo.checkout_force(opts.branch, f"origin/{opts.branch}")
+            if self.repo.remote_branch_exists(branch):
+                self.repo.checkout_force(branch, f"origin/{branch}")
             else:
-                self.repo.checkout_force(opts.branch)
-            self.repo.set_upstream(opts.branch)
-            _LOGGER.info("Switched to branch '%s'", opts.branch)
+                self.repo.checkout_force(branch)
+            self.repo.set_upstream(branch)
+            _LOGGER.info("Switched to branch '%s'", branch)
         except GitError as err:
-            _LOGGER.error("Could not switch to branch '%s': %s", opts.branch, err)
+            _LOGGER.error("Could not switch to branch '%s': %s", branch, err)
 
     # ------------------------------------------------------------------- apply
-    def _maybe_apply(self) -> str:
-        """Optionally validate and reload/restart Home Assistant after a change."""
-        action = self.options.apply_action
+    def _maybe_apply(self, override: str | None = None) -> str:
+        """Optionally validate and reload/restart Home Assistant after a change.
+
+        ``override`` lets callers (e.g. branch switch/promote from the UI) force
+        a specific action; when omitted the configured ``apply_action`` is used.
+        """
+        action = override if override is not None else self.options.apply_action
         if action == "none":
             return ""
         if self.options.check_config_before_apply:
@@ -290,6 +314,7 @@ class SyncManager:
         """Run the configured strategy. Returns True if local files changed."""
         opts = self.options
         repo = self.repo
+        branch = self.active_branch
         strategy = opts.sync_strategy
         changed = False
 
@@ -300,7 +325,7 @@ class SyncManager:
             fetched = False
             _LOGGER.warning("Fetch failed (continuing): %s", err)
 
-        remote_has = repo.remote_branch_exists(opts.branch) if fetched else False
+        remote_has = repo.remote_branch_exists(branch) if fetched else False
 
         # Stage and commit local changes (unless the remote is authoritative).
         if strategy != "remote_wins":
@@ -312,10 +337,10 @@ class SyncManager:
 
         if strategy == "remote_wins":
             if remote_has:
-                behind, ahead = repo.ahead_behind(opts.branch)
+                behind, ahead = repo.ahead_behind(branch)
                 if behind > 0 or ahead > 0 or repo.is_dirty():
-                    _LOGGER.info("Resetting local config to origin/%s", opts.branch)
-                    repo.reset_hard(opts.branch)
+                    _LOGGER.info("Resetting local config to origin/%s", branch)
+                    repo.reset_hard(branch)
                     if opts.restore_clean:
                         repo.clean(opts.excludes)
                     changed = behind > 0 or repo.is_dirty()
@@ -324,21 +349,21 @@ class SyncManager:
 
         elif strategy == "local_wins":
             if repo.has_commits():
-                behind, _ = repo.ahead_behind(opts.branch)
-                repo.push(opts.branch, force=behind > 0)
-                _LOGGER.info("Pushed local configuration to origin/%s", opts.branch)
+                behind, _ = repo.ahead_behind(branch)
+                repo.push(branch, force=behind > 0)
+                _LOGGER.info("Pushed local configuration to origin/%s", branch)
 
         else:  # rebase — true two-way sync
             if remote_has:
-                behind, ahead = repo.ahead_behind(opts.branch)
+                behind, ahead = repo.ahead_behind(branch)
                 if behind > 0:
-                    _LOGGER.info("Rebasing local commits onto origin/%s", opts.branch)
-                    repo.rebase_onto(opts.branch)
+                    _LOGGER.info("Rebasing local commits onto origin/%s", branch)
+                    repo.rebase_onto(branch)
                     changed = True
-                _, ahead = repo.ahead_behind(opts.branch)
+                _, ahead = repo.ahead_behind(branch)
                 if ahead > 0:
-                    repo.push(opts.branch)
-                    _LOGGER.info("Pushed configuration to origin/%s", opts.branch)
+                    repo.push(branch)
+                    _LOGGER.info("Pushed configuration to origin/%s", branch)
             else:
                 self._seed_remote()
 
@@ -347,13 +372,14 @@ class SyncManager:
     def _seed_remote(self) -> None:
         """Create the remote branch from the local configuration."""
         repo = self.repo
+        branch = self.active_branch
         self._write_gitignore()
         repo.add_all()
         if repo.has_staged_changes():
             repo.commit(self._commit_message())
         if repo.has_commits():
-            repo.push(self.options.branch)
-            _LOGGER.info("Seeded origin/%s from local configuration", self.options.branch)
+            repo.push(branch)
+            _LOGGER.info("Seeded origin/%s from local configuration", branch)
 
     # ---------------------------------------------------------------- restore
     def restore(self, reason: str = "manual") -> dict[str, Any]:
@@ -365,18 +391,19 @@ class SyncManager:
             try:
                 self.ensure_setup()
                 opts = self.options
+                branch = self.active_branch
                 self.repo.fetch()
-                if not self.repo.remote_branch_exists(opts.branch):
-                    msg = f"Remote branch '{opts.branch}' does not exist yet"
+                if not self.repo.remote_branch_exists(branch):
+                    msg = f"Remote branch '{branch}' does not exist yet"
                     _LOGGER.warning(msg)
                     self._record("idle", reason, msg)
                     return self._state
-                _LOGGER.info("Restoring configuration from origin/%s", opts.branch)
-                self.repo.reset_hard(opts.branch)
+                _LOGGER.info("Restoring configuration from origin/%s", branch)
+                self.repo.reset_hard(branch)
                 if opts.restore_clean:
                     self.repo.clean(opts.excludes)
                 applied = self._maybe_apply()
-                self._record("ok", reason, f"Restored from {opts.branch}", applied)
+                self._record("ok", reason, f"Restored from {branch}", applied)
             except GitError as err:
                 _LOGGER.error("Restore failed: %s", err)
                 self._record("error", reason, str(err))
@@ -384,6 +411,146 @@ class SyncManager:
                 _LOGGER.exception("Unexpected error during restore")
                 self._record("error", reason, str(err))
             return self._state
+
+    # ---------------------------------------------------------------- branches
+    def list_branches(self) -> list[str]:
+        """Return the known branches: remote heads plus the configured
+        prod/dev branches and the current active branch, de-duplicated.
+
+        Best-effort — a slow or unreachable remote yields just the local names.
+        """
+        opts = self.options
+        names: list[str] = []
+        try:
+            if opts.configured and self.repo.initialized:
+                remote = self.repo.list_remote_branches()
+            else:
+                remote = []
+        except GitError:
+            remote = []
+        for candidate in [*remote, opts.prod_branch, opts.dev_branch, self.active_branch]:
+            if candidate and candidate not in names:
+                names.append(candidate)
+        self._branches_cache = names
+        return names
+
+    def switch_branch(
+        self, branch: str, apply: str = "none", reason: str = "ui"
+    ) -> dict[str, Any]:
+        """Switch the active environment to ``branch``.
+
+        Local changes on the current branch are committed first (so nothing is
+        lost), the target branch is fetched/checked out (created from the
+        current state when it does not exist on the remote yet), the working
+        configuration is synchronised to it and ``apply`` (none|reload|restart)
+        is optionally run.
+        """
+        branch = (branch or "").strip()
+        if not branch:
+            return {"ok": False, "message": "No branch specified"}
+        if not self.options.allow_branch_switch:
+            return {"ok": False, "message": "Branch switching is disabled"}
+        if not self.options.configured:
+            return {"ok": False, "message": "No repository URL configured"}
+
+        with self._lock:
+            try:
+                self.ensure_setup()
+                repo = self.repo
+
+                if branch == self.active_branch:
+                    return {"ok": True, "message": f"Already on '{branch}'"}
+
+                # Preserve any in-flight local edits on the current branch.
+                self._write_gitignore()
+                repo.add_all()
+                if repo.has_staged_changes():
+                    repo.commit(self._commit_message())
+                    _LOGGER.info("Committed local changes before switching branch")
+
+                try:
+                    repo.fetch()
+                except GitError as err:
+                    _LOGGER.warning("Fetch failed before switch (continuing): %s", err)
+
+                if repo.remote_branch_exists(branch):
+                    repo.checkout_force(branch, f"origin/{branch}")
+                else:
+                    # Create the new branch from the current configuration.
+                    repo.checkout_force(branch)
+                repo.set_upstream(branch)
+                self._set_active_branch(branch)
+                _LOGGER.info("Active environment switched to '%s'", branch)
+
+                # Bring the working tree / remote in line with the new branch.
+                self._do_sync()
+
+                applied = self._maybe_apply(override=apply)
+                msg = f"Switched to '{branch}'"
+                self._record("ok", reason, msg, applied)
+                return {"ok": True, "message": msg, "applied": applied}
+            except SyncConflict as err:
+                _LOGGER.error("%s", err)
+                self._record("conflict", reason, str(err))
+                return {"ok": False, "message": str(err)}
+            except GitError as err:
+                _LOGGER.error("Branch switch failed: %s", err)
+                self._record("error", reason, str(err))
+                return {"ok": False, "message": str(err)}
+            except Exception as err:  # pragma: no cover - defensive
+                _LOGGER.exception("Unexpected error during branch switch")
+                self._record("error", reason, str(err))
+                return {"ok": False, "message": str(err)}
+
+    def promote(self, apply: str = "none", reason: str = "ui") -> dict[str, Any]:
+        """Promote the current active branch onto the prod branch on origin.
+
+        Intended to publish a tested ``dev`` branch to ``prod``. If the active
+        branch is already prod this is a no-op. The active branch is left
+        unchanged so the user keeps working where they were.
+        """
+        if not self.options.configured:
+            return {"ok": False, "message": "No repository URL configured"}
+
+        target = self.options.prod_branch
+        with self._lock:
+            try:
+                if self.active_branch == target:
+                    msg = f"Active branch is already '{target}'; nothing to promote"
+                    self._record("idle", reason, msg)
+                    return {"ok": True, "message": msg}
+
+                self.ensure_setup()
+                repo = self.repo
+
+                # Make sure the active branch's local commits are pushed first.
+                self._write_gitignore()
+                repo.add_all()
+                if repo.has_staged_changes():
+                    repo.commit(self._commit_message())
+
+                try:
+                    repo.fetch()
+                except GitError as err:
+                    _LOGGER.warning("Fetch failed before promote (continuing): %s", err)
+
+                source = self.active_branch
+                if repo.has_commits():
+                    repo.push(source)
+                repo.promote(source, target)
+                msg = f"Promoted '{source}' to '{target}'"
+                _LOGGER.info(msg)
+                applied = self._maybe_apply(override=apply)
+                self._record("ok", reason, msg, applied)
+                return {"ok": True, "message": msg, "applied": applied}
+            except GitError as err:
+                _LOGGER.error("Promote failed: %s", err)
+                self._record("error", reason, str(err))
+                return {"ok": False, "message": str(err)}
+            except Exception as err:  # pragma: no cover - defensive
+                _LOGGER.exception("Unexpected error during promote")
+                self._record("error", reason, str(err))
+                return {"ok": False, "message": str(err)}
 
     # ------------------------------------------------------------------ status
     def status(self) -> dict[str, Any]:
@@ -394,7 +561,7 @@ class SyncManager:
                 if opts.configured and self.repo.initialized:
                     behind, ahead = (0, 0)
                     try:
-                        behind, ahead = self.repo.ahead_behind(opts.branch)
+                        behind, ahead = self.repo.ahead_behind(self.active_branch)
                     except GitError:
                         pass
                     head = self.repo.head_info()
@@ -413,11 +580,25 @@ class SyncManager:
             except GitError as err:
                 git_state = {"initialized": False, "error": str(err)}
 
+        # Best-effort branch list. Never let a slow/failing remote call break
+        # /api/status — fall back to the last cached value on error.
+        try:
+            branches = self.list_branches()
+        except Exception:  # pragma: no cover - defensive
+            branches = self._branches_cache
+
+        active = self.active_branch
         return {
             "configured": opts.configured,
             "enabled": opts.enabled,
             "repository": opts.safe_repository_url,
             "branch": opts.branch,
+            "active_branch": active,
+            "prod_branch": opts.prod_branch,
+            "dev_branch": opts.dev_branch,
+            "is_dev": active != opts.prod_branch,
+            "allow_branch_switch": opts.allow_branch_switch,
+            "branches": branches,
             "strategy": opts.sync_strategy,
             "auth_method": opts.auth_method,
             "apply_action": opts.apply_action,
