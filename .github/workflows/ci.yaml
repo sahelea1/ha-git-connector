@@ -49,9 +49,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install Ruff
-        run: pip install ruff
+      - name: Install tooling
+        run: pip install ruff pytest
       - name: Byte-compile
         run: python -m compileall -q gitlab_config_sync/app
       - name: Lint with Ruff
         run: ruff check gitlab_config_sync/app
+      - name: Run tests
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI"
+          python -m pytest tests/ -q
