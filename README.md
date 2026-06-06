@@ -1,9 +1,16 @@
-# Sahelea Home Assistant Add-ons
+# GitLab Config Sync — Home Assistant Add-on
 
-A Home Assistant add-on repository. Add it to your Supervisor and install the
-add-ons below directly from the Home Assistant UI.
+A single-purpose Home Assistant add-on repository for **GitLab Config Sync**.
+
+Continuously back up your Home Assistant configuration (`configuration.yaml`,
+`automations.yaml`, dashboards, packages, …) to a **private GitLab repository**,
+and **restore it from a branch** when something goes wrong.
 
 [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fsahelea1%2Fha-git-connector)
+
+<p align="center">
+  <img src="./gitlab_config_sync/logo.png" alt="GitLab Config Sync" width="540">
+</p>
 
 ## Add this repository
 
@@ -15,20 +22,16 @@ add-ons below directly from the Home Assistant UI.
    https://github.com/sahelea1/ha-git-connector
    ```
 
-4. Close the dialog. The add-ons below now appear at the bottom of the store.
+4. Close the dialog. **GitLab Config Sync** now appears at the bottom of the
+   Add-on Store — install it, fill in `repository_url` + `token`, start it and
+   open the Web UI.
 
 > Requires **Home Assistant OS** or **Supervised** (the add-on system). It is
 > not available on Home Assistant Container or Core installations.
 
-## Add-ons in this repository
+## Features
 
-### 🔄 [GitLab Config Sync](./gitlab_config_sync)
-
-Continuously back up your Home Assistant configuration (`configuration.yaml`,
-`automations.yaml`, dashboards, packages, …) to a **private GitLab repository**,
-and **restore it from a branch** when something goes wrong.
-
-- ⏱️ Automatic backups on a schedule **and** whenever files change.
+- ⏱️ Automatic backups on a schedule **and** moments after files change.
 - 🌿 Keeps a recovery branch (default `prod`) — fix the files there and Home
   Assistant pulls them back and gets running again.
 - ↔️ Two-way sync, mirror-down, or backup-only strategies.
@@ -38,11 +41,7 @@ and **restore it from a branch** when something goes wrong.
 - 🪄 Optional config check + reload/restart after a restore.
 - ✨ A clean Ingress dashboard with one-click **Sync** and **Restore**.
 
-<p align="center">
-  <img src="./gitlab_config_sync/logo.png" alt="GitLab Config Sync" width="520">
-</p>
-
-➡️ **[Read the full documentation](./gitlab_config_sync/DOCS.md)**
+➡️ **[Read the full add-on documentation](./gitlab_config_sync/DOCS.md)**
 
 ## Repository layout
 
@@ -59,6 +58,7 @@ ha-git-connector/
 │   ├── translations/            # Configuration UI labels
 │   ├── rootfs/                  # s6-overlay service definitions
 │   └── app/                     # Python application
+├── tests/                       # Integration tests against a real git repo
 └── .github/workflows/           # Linting & validation
 ```
 
