@@ -277,12 +277,83 @@
       font-family: var(--mono); letter-spacing: .6px; line-height: 1.8; }
     a { color: var(--accent); }
 
+    /* ===== Commit message input ===== */
+    .commit-input {
+      font-family: var(--mono); font-size: .78rem; letter-spacing: .3px;
+      background: rgba(0,0,0,.35); color: var(--text); border: 1px solid var(--border);
+      border-radius: 11px; padding: 13px 16px; width: 100%;
+      transition: border-color .18s ease;
+    }
+    .commit-input::placeholder { color: var(--faint); }
+    .commit-input:focus { outline: none; border-color: var(--border-warm); }
+    .commit-input:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ===== Restore modal ===== */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .22s ease;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .modal-card {
+      background: linear-gradient(180deg, var(--card-2) 0%, var(--card) 120%);
+      border: 1px solid var(--border-warm); border-radius: var(--radius);
+      padding: 28px 26px 22px; box-shadow: var(--shadow);
+      width: 94vw; max-width: 460px;
+    }
+    .modal-card h2 {
+      margin: 0 0 20px; font-family: var(--mono); font-size: .66rem; text-transform: uppercase;
+      letter-spacing: 2.6px; color: var(--faint); font-weight: 400;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block; font-family: var(--mono); font-size: .6rem; text-transform: uppercase;
+      letter-spacing: 2px; color: var(--faint); margin-bottom: 6px;
+    }
+    .form-group select {
+      font-family: var(--mono); font-size: .68rem; letter-spacing: 1px; text-transform: uppercase;
+      background: rgba(0,0,0,.35); color: var(--text); border: 1px solid var(--border);
+      border-radius: 9px; padding: 9px 12px; cursor: pointer; width: 100%;
+    }
+    .form-group select:focus { outline: none; border-color: var(--border-warm); }
+    .modal-actions { display: flex; gap: 12px; margin-top: 22px; }
+
+    /* ===== Branch operations ===== */
+    .branch-ops {
+      margin: 20px 0 0;
+      background: linear-gradient(180deg, var(--card-2) 0%, var(--card) 120%);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px 20px 16px; box-shadow: var(--shadow);
+    }
+    .branch-ops h2 {
+      margin: 0 0 16px; font-family: var(--mono); font-size: .66rem; text-transform: uppercase;
+      letter-spacing: 2.6px; color: var(--faint); font-weight: 400;
+    }
+    .branch-ops-row {
+      display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
+    }
+    .branch-ops-row .form-group { margin-bottom: 0; flex: 1; min-width: 160px; }
+    .branch-ops-row .form-group input {
+      font-family: var(--mono); font-size: .78rem; letter-spacing: .3px;
+      background: rgba(0,0,0,.35); color: var(--text); border: 1px solid var(--border);
+      border-radius: 9px; padding: 9px 12px; width: 100%;
+    }
+    .branch-ops-row .form-group input::placeholder { color: var(--faint); }
+    .branch-ops-row .form-group input:focus { outline: none; border-color: var(--border-warm); }
+    .branch-ops-row .form-group input:disabled { opacity: .45; cursor: not-allowed; }
+    .branch-ops-divider {
+      border: none; border-top: 1px solid rgba(224, 200, 196, .05); margin: 18px 0;
+    }
+
     @media (max-width: 560px) {
       .devanagari { font-size: 2.3rem; }
       .wordmark .name { font-size: 1.6rem; }
       .segmented { width: 100%; }
       .seg { flex: 1; min-width: 0; }
       .summary .st { font-size: 1.2rem; }
+      .branch-ops-row { flex-direction: column; }
     }
   </style>
 </head>
@@ -387,7 +458,12 @@
       </div>
     </div>
 
-    <div class="actions">
+    <div style="margin: 26px 0 10px;">
+      <input type="text" id="commit-msg" class="commit-input"
+             placeholder="Custom commit message (optional)" />
+    </div>
+
+    <div class="actions" style="margin-top: 0;">
       <button id="btn-sync" class="primary" onclick="doAction('sync', this)">
         <span class="ico">&#x21bb;</span> Sync / Back Up Now
       </button>
@@ -395,6 +471,32 @@
         <span class="ico">&#x21a9;</span> Restore From Branch
       </button>
       <button class="ghost" onclick="refresh()">Refresh</button>
+    </div>
+
+    <div class="branch-ops" id="branch-ops">
+      <h2>Branch Operations</h2>
+
+      <div class="branch-ops-row">
+        <div class="form-group">
+          <label for="push-branch">Target branch</label>
+          <select id="push-branch" class="apply"></select>
+        </div>
+        <button id="btn-push" onclick="doPushToBranch(this)">Push to Branch</button>
+      </div>
+
+      <hr class="branch-ops-divider" />
+
+      <div class="branch-ops-row">
+        <div class="form-group">
+          <label for="new-branch-name">New branch name</label>
+          <input type="text" id="new-branch-name" placeholder="feature/my-branch" />
+        </div>
+        <div class="form-group">
+          <label for="from-branch">From branch</label>
+          <select id="from-branch" class="apply"></select>
+        </div>
+        <button id="btn-create-branch" onclick="doCreateBranch(this)">Create Branch</button>
+      </div>
     </div>
 
     <div class="logwrap">
@@ -411,6 +513,28 @@
   </div>
 
   <div id="toast"></div>
+
+  <div class="modal-overlay" id="restore-modal">
+    <div class="modal-card">
+      <h2>Restore from Branch / Commit</h2>
+      <div class="form-group">
+        <label for="restore-branch">Branch</label>
+        <select id="restore-branch" onchange="loadCommitsForBranch()"></select>
+      </div>
+      <div class="form-group">
+        <label for="restore-commit">Commit</label>
+        <select id="restore-commit">
+          <option value="">Latest (branch tip)</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="danger" id="btn-restore-confirm" onclick="doRestoreFromModal(this)">
+          <span class="ico">&#x21a9;</span> Restore
+        </button>
+        <button class="ghost" onclick="closeRestoreModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     let busy = false;
@@ -519,7 +643,35 @@
         (last.applied ? " · last: " + last.applied : "");
 
       const rb = document.getElementById("btn-restore");
-      rb.innerHTML = '<span class="ico">&#x21a9;</span> Restore From "' + (s.active_branch || s.branch || "branch") + '"';
+      rb.innerHTML = '<span class="ico">&#x21a9;</span> Restore From "' + escapeHtml(s.active_branch || s.branch || "branch") + '"';
+
+      // Populate branch dropdowns for branch operations
+      var branches = s.branches || [];
+      var activeBranch = s.active_branch || s.branch || "";
+      var pushBranchSel = document.getElementById("push-branch");
+      var fromBranchSel = document.getElementById("from-branch");
+      if (pushBranchSel) {
+        var prevPush = pushBranchSel.value;
+        pushBranchSel.innerHTML = "";
+        for (var i = 0; i < branches.length; i++) {
+          var opt = document.createElement("option");
+          opt.value = branches[i];
+          opt.textContent = branches[i];
+          if (prevPush ? branches[i] === prevPush : branches[i] === activeBranch) opt.selected = true;
+          pushBranchSel.appendChild(opt);
+        }
+      }
+      if (fromBranchSel) {
+        var prevFrom = fromBranchSel.value;
+        fromBranchSel.innerHTML = "";
+        for (var i = 0; i < branches.length; i++) {
+          var opt = document.createElement("option");
+          opt.value = branches[i];
+          opt.textContent = branches[i];
+          if (prevFrom ? branches[i] === prevFrom : branches[i] === activeBranch) opt.selected = true;
+          fromBranchSel.appendChild(opt);
+        }
+      }
     }
 
     function renderEnv(s) {
@@ -601,6 +753,21 @@
       const promote = document.getElementById("btn-promote");
       // While busy, lock the env controls; renderEnv() restores correct state afterwards.
       if (on) { segProd.disabled = true; segDev.disabled = true; promote.disabled = true; }
+      // Disable new elements
+      var commitMsg = document.getElementById("commit-msg");
+      if (commitMsg) commitMsg.disabled = on;
+      var btnPush = document.getElementById("btn-push");
+      if (btnPush) btnPush.disabled = on;
+      var btnCreateBranch = document.getElementById("btn-create-branch");
+      if (btnCreateBranch) btnCreateBranch.disabled = on;
+      var newBranchName = document.getElementById("new-branch-name");
+      if (newBranchName) newBranchName.disabled = on;
+      var pushBranch = document.getElementById("push-branch");
+      if (pushBranch) pushBranch.disabled = on;
+      var fromBranch = document.getElementById("from-branch");
+      if (fromBranch) fromBranch.disabled = on;
+      var btnRestoreConfirm = document.getElementById("btn-restore-confirm");
+      if (btnRestoreConfirm) btnRestoreConfirm.disabled = on;
       if (btn) {
         if (on) {
           btn.dataset.html = btn.innerHTML;
@@ -616,11 +783,24 @@
       if (busy) return;
       setBusy(btn, true);
       try {
-        const res = await fetch("api/" + kind, { method: "POST" });
+        var fetchOpts = { method: "POST" };
+        if (kind === "sync") {
+          var msgEl = document.getElementById("commit-msg");
+          var msg = msgEl ? msgEl.value.trim() : "";
+          if (msg) {
+            fetchOpts.headers = { "Content-Type": "application/json" };
+            fetchOpts.body = JSON.stringify({ message: msg });
+          }
+        }
+        const res = await fetch("api/" + kind, fetchOpts);
         const data = await res.json();
         if (data.ok) {
           toast((kind === "restore" ? "Restore" : "Sync") + " complete" +
                 (data.applied ? " · " + data.applied : ""), "ok");
+          if (kind === "sync") {
+            var msgEl2 = document.getElementById("commit-msg");
+            if (msgEl2) msgEl2.value = "";
+          }
         } else {
           toast((data.message || "Operation failed"), "err");
         }
@@ -633,10 +813,141 @@
     }
 
     function confirmRestore(btn) {
-      const branch = lastStatus.active_branch || lastStatus.branch || "the remote branch";
-      if (confirm("Restore overwrites your local Home Assistant configuration with " +
-                  '"' + branch + '". Continue?')) {
-        doAction("restore", btn);
+      openRestoreModal();
+    }
+
+    function openRestoreModal() {
+      var modal = document.getElementById("restore-modal");
+      var branchSel = document.getElementById("restore-branch");
+      var commitSel = document.getElementById("restore-commit");
+      var branches = (lastStatus.branches && lastStatus.branches.length) ? lastStatus.branches : [];
+      var active = lastStatus.active_branch || lastStatus.branch || "";
+
+      branchSel.innerHTML = "";
+      for (var i = 0; i < branches.length; i++) {
+        var opt = document.createElement("option");
+        opt.value = branches[i];
+        opt.textContent = branches[i];
+        if (branches[i] === active) opt.selected = true;
+        branchSel.appendChild(opt);
+      }
+      if (!branches.length) {
+        var opt = document.createElement("option");
+        opt.value = active;
+        opt.textContent = active || "—";
+        branchSel.appendChild(opt);
+      }
+
+      commitSel.innerHTML = '<option value="">Latest (branch tip)</option>';
+      modal.classList.add("open");
+      loadCommitsForBranch();
+    }
+
+    function closeRestoreModal() {
+      document.getElementById("restore-modal").classList.remove("open");
+    }
+
+    async function loadCommitsForBranch() {
+      var branchSel = document.getElementById("restore-branch");
+      var commitSel = document.getElementById("restore-commit");
+      var branch = branchSel.value;
+      commitSel.innerHTML = '<option value="">Latest (branch tip)</option>';
+      if (!branch) return;
+      try {
+        var res = await fetch("api/commits?branch=" + encodeURIComponent(branch), { cache: "no-store" });
+        var data = await res.json();
+        var commits = data.commits || [];
+        for (var i = 0; i < commits.length; i++) {
+          var c = commits[i];
+          var opt = document.createElement("option");
+          opt.value = c.hash;
+          opt.textContent = c.short + " — " + escapeHtml(c.subject) + " (" + c.date + ")";
+          commitSel.appendChild(opt);
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    async function doRestoreFromModal(btn) {
+      if (busy) return;
+      var branchSel = document.getElementById("restore-branch");
+      var commitSel = document.getElementById("restore-commit");
+      var branch = branchSel.value;
+      var commit = commitSel.value;
+      closeRestoreModal();
+      var restoreBtn = document.getElementById("btn-restore");
+      setBusy(restoreBtn, true);
+      try {
+        var res = await fetch("api/restore", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ branch: branch, commit: commit })
+        });
+        var data = await res.json();
+        if (data.ok) {
+          toast("Restore complete" + (data.applied ? " · " + data.applied : ""), "ok");
+        } else {
+          toast(data.message || "Restore failed", "err");
+        }
+      } catch (e) {
+        toast("Restore failed: " + e, "err");
+      } finally {
+        setBusy(restoreBtn, false);
+        refresh();
+      }
+    }
+
+    async function doPushToBranch(btn) {
+      if (busy) return;
+      var sel = document.getElementById("push-branch");
+      var branch = sel ? sel.value : "";
+      if (!branch) { toast("Select a branch to push to", "err"); return; }
+      setBusy(btn, true);
+      try {
+        var res = await fetch("api/push", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ branch: branch })
+        });
+        var data = await res.json();
+        if (data.ok) {
+          toast("Pushed to " + escapeHtml(branch), "ok");
+        } else {
+          toast(data.message || "Push failed", "err");
+        }
+      } catch (e) {
+        toast("Push failed: " + e, "err");
+      } finally {
+        setBusy(btn, false);
+        refresh();
+      }
+    }
+
+    async function doCreateBranch(btn) {
+      if (busy) return;
+      var nameEl = document.getElementById("new-branch-name");
+      var fromEl = document.getElementById("from-branch");
+      var name = nameEl ? nameEl.value.trim() : "";
+      var fromBranch = fromEl ? fromEl.value : "";
+      if (!name) { toast("Enter a branch name", "err"); return; }
+      setBusy(btn, true);
+      try {
+        var res = await fetch("api/create-branch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name, from_branch: fromBranch })
+        });
+        var data = await res.json();
+        if (data.ok) {
+          toast("Branch " + escapeHtml(name) + " created", "ok");
+          nameEl.value = "";
+        } else {
+          toast(data.message || "Create branch failed", "err");
+        }
+      } catch (e) {
+        toast("Create branch failed: " + e, "err");
+      } finally {
+        setBusy(btn, false);
+        refresh();
       }
     }
 

@@ -35,13 +35,43 @@ def create_app(manager: SyncManager) -> Flask:
 
     @app.post("/api/sync")
     def api_sync():
-        state = manager.sync(reason="ui")
+        body = request.get_json(silent=True) or {}
+        message = str(body.get("message", "")).strip()
+        state = manager.sync(reason="ui", message=message)
         return jsonify(_action_response(state))
 
     @app.post("/api/restore")
     def api_restore():
-        state = manager.restore(reason="ui")
+        body = request.get_json(silent=True) or {}
+        branch = str(body.get("branch", "")).strip()
+        commit = str(body.get("commit", "")).strip()
+        state = manager.restore(reason="ui", branch=branch, commit=commit)
         return jsonify(_action_response(state))
+
+    @app.get("/api/commits")
+    def api_commits():
+        branch = request.args.get("branch", "").strip()
+        commits = manager.list_commits(branch)
+        return jsonify({"commits": commits})
+
+    @app.post("/api/push")
+    def api_push():
+        body = request.get_json(silent=True) or {}
+        branch = str(body.get("branch", "")).strip()
+        if not branch:
+            return jsonify({"ok": False, "message": "Missing 'branch'"}), 400
+        result = manager.push_to_branch(branch, reason="ui")
+        return jsonify(result)
+
+    @app.post("/api/create-branch")
+    def api_create_branch():
+        body = request.get_json(silent=True) or {}
+        name = str(body.get("name", "")).strip()
+        from_branch = str(body.get("from_branch", "")).strip()
+        if not name:
+            return jsonify({"ok": False, "message": "Missing 'name'"}), 400
+        result = manager.create_branch(name, from_branch=from_branch, reason="ui")
+        return jsonify(result)
 
     @app.post("/api/switch")
     def api_switch():

@@ -303,3 +303,31 @@ class GitRepo:
         if len(parts) != 3:
             return None
         return HeadInfo(short=parts[0], subject=parts[1], date=parts[2])
+
+    def list_commits(self, branch: str, limit: int = 30) -> list[dict[str, str]]:
+        """Return recent commits on ``origin/<branch>``."""
+        ref = f"{REMOTE}/{branch}"
+        if not self.remote_branch_exists(branch):
+            return []
+        proc = self._run(
+            "log", ref, f"-{limit}", "--no-color",
+            "--pretty=%H%x1f%h%x1f%s%x1f%cI",
+            check=False,
+        )
+        if proc.returncode != 0:
+            return []
+        commits: list[dict[str, str]] = []
+        for line in proc.stdout.strip().splitlines():
+            parts = line.split("\x1f")
+            if len(parts) == 4:
+                commits.append({
+                    "hash": parts[0],
+                    "short": parts[1],
+                    "subject": parts[2],
+                    "date": parts[3],
+                })
+        return commits
+
+    def reset_hard_commit(self, commit: str) -> None:
+        """Reset the working tree to a specific commit hash."""
+        self._run("reset", "--hard", commit)

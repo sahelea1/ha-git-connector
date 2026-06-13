@@ -285,7 +285,7 @@ class SyncManager:
         return f"{self.options.commit_message} — {stamp}"
 
     # ------------------------------------------------------------------- sync
-    def sync(self, reason: str = "manual") -> dict[str, Any]:
+    def sync(self, reason: str = "manual", message: str = "") -> dict[str, Any]:
         """Two-way (or strategy-specific) synchronisation."""
         if not self.options.configured:
             self._record("idle", reason, "No repository URL configured")
@@ -293,7 +293,7 @@ class SyncManager:
         with self._lock:
             try:
                 applied_local = self.ensure_setup()
-                changed = self._do_sync()
+                changed = self._do_sync(message=message)
                 changed = changed or applied_local or self._initial_restore_done
                 self._initial_restore_done = False
                 applied = self._maybe_apply() if changed else ""
@@ -310,13 +310,14 @@ class SyncManager:
                 self._record("error", reason, str(err))
             return self._state
 
-    def _do_sync(self) -> bool:
+    def _do_sync(self, message: str = "") -> bool:
         """Run the configured strategy. Returns True if local files changed."""
         opts = self.options
         repo = self.repo
         branch = self.active_branch
         strategy = opts.sync_strategy
         changed = False
+        commit_msg = message or self._commit_message()
 
         fetched = True
         try:
@@ -332,7 +333,7 @@ class SyncManager:
             self._write_gitignore()
             repo.add_all()
             if repo.has_staged_changes():
-                repo.commit(self._commit_message())
+                repo.commit(commit_msg)
                 _LOGGER.info("Committed local configuration changes")
 
         if strategy == "remote_wins":
@@ -382,8 +383,10 @@ class SyncManager:
             _LOGGER.info("Seeded origin/%s from local configuration", branch)
 
     # ---------------------------------------------------------------- restore
-    def restore(self, reason: str = "manual") -> dict[str, Any]:
-        """Force the local configuration to match the remote branch."""
+    def restore(
+        self, reason: str = "manual", branch: str = "", commit: str = ""
+    ) -> dict[str, Any]:
+        """Force the local configuration to match a remote branch or commit."""
         if not self.options.configured:
             self._record("idle", reason, "No repository URL configured")
             return self._state
@@ -391,19 +394,26 @@ class SyncManager:
             try:
                 self.ensure_setup()
                 opts = self.options
-                branch = self.active_branch
+                target = branch or self.active_branch
                 self.repo.fetch()
-                if not self.repo.remote_branch_exists(branch):
-                    msg = f"Remote branch '{branch}' does not exist yet"
+                if not self.repo.remote_branch_exists(target):
+                    msg = f"Remote branch '{target}' does not exist yet"
                     _LOGGER.warning(msg)
                     self._record("idle", reason, msg)
                     return self._state
-                _LOGGER.info("Restoring configuration from origin/%s", branch)
-                self.repo.reset_hard(branch)
+                if commit:
+                    _LOGGER.info(
+                        "Restoring configuration to commit %s on %s", commit[:8], target
+                    )
+                    self.repo.reset_hard_commit(commit)
+                else:
+                    _LOGGER.info("Restoring configuration from origin/%s", target)
+                    self.repo.reset_hard(target)
                 if opts.restore_clean:
                     self.repo.clean(opts.excludes)
+                label = f"{target}@{commit[:8]}" if commit else target
                 applied = self._maybe_apply()
-                self._record("ok", reason, f"Restored from {branch}", applied)
+                self._record("ok", reason, f"Restored from {label}", applied)
             except GitError as err:
                 _LOGGER.error("Restore failed: %s", err)
                 self._record("error", reason, str(err))
@@ -411,6 +421,106 @@ class SyncManager:
                 _LOGGER.exception("Unexpected error during restore")
                 self._record("error", reason, str(err))
             return self._state
+
+    def list_commits(self, branch: str = "") -> list[dict[str, str]]:
+        """Return recent commits for a branch (fetches first)."""
+        target = branch or self.active_branch
+        if not self.options.configured or not self.repo.initialized:
+            return []
+        with self._lock:
+            try:
+                self.repo.fetch()
+            except GitError:
+                pass
+            return self.repo.list_commits(target)
+
+    def push_to_branch(
+        self, target_branch: str, reason: str = "ui"
+    ) -> dict[str, Any]:
+        """Commit local changes and push them to an arbitrary remote branch."""
+        if not self.options.configured:
+            return {"ok": False, "message": "No repository URL configured"}
+        target_branch = (target_branch or "").strip()
+        if not target_branch:
+            return {"ok": False, "message": "No target branch specified"}
+        with self._lock:
+            try:
+                self.ensure_setup()
+                repo = self.repo
+                self._write_gitignore()
+                repo.add_all()
+                if repo.has_staged_changes():
+                    repo.commit(self._commit_message())
+                if not repo.has_commits():
+                    return {"ok": False, "message": "No commits to push"}
+                try:
+                    repo.fetch()
+                except GitError as err:
+                    _LOGGER.warning("Fetch failed before push (continuing): %s", err)
+                source = self.active_branch
+                if source == target_branch:
+                    behind, _ = repo.ahead_behind(target_branch)
+                    repo.push(target_branch, force=behind > 0)
+                else:
+                    repo.promote(source, target_branch)
+                msg = f"Pushed to '{target_branch}'"
+                _LOGGER.info(msg)
+                self._record("ok", reason, msg)
+                return {"ok": True, "message": msg}
+            except GitError as err:
+                _LOGGER.error("Push to '%s' failed: %s", target_branch, err)
+                self._record("error", reason, str(err))
+                return {"ok": False, "message": str(err)}
+            except Exception as err:  # pragma: no cover - defensive
+                _LOGGER.exception("Unexpected error during push")
+                self._record("error", reason, str(err))
+                return {"ok": False, "message": str(err)}
+
+    def create_branch(
+        self, name: str, from_branch: str = "", reason: str = "ui"
+    ) -> dict[str, Any]:
+        """Create a new feature branch and switch to it."""
+        name = (name or "").strip()
+        if not name:
+            return {"ok": False, "message": "No branch name specified"}
+        if not self.options.configured:
+            return {"ok": False, "message": "No repository URL configured"}
+        with self._lock:
+            try:
+                self.ensure_setup()
+                repo = self.repo
+                self._write_gitignore()
+                repo.add_all()
+                if repo.has_staged_changes():
+                    repo.commit(self._commit_message())
+                try:
+                    repo.fetch()
+                except GitError as err:
+                    _LOGGER.warning(
+                        "Fetch failed before branch creation (continuing): %s", err
+                    )
+                source = from_branch or self.active_branch
+                if repo.remote_branch_exists(source):
+                    start = f"origin/{source}"
+                else:
+                    start = None
+                repo.checkout_force(name, start)
+                repo.set_upstream(name)
+                self._set_active_branch(name)
+                if repo.has_commits():
+                    repo.push(name)
+                msg = f"Created branch '{name}' from '{source}'"
+                _LOGGER.info(msg)
+                self._record("ok", reason, msg)
+                return {"ok": True, "message": msg}
+            except GitError as err:
+                _LOGGER.error("Branch creation failed: %s", err)
+                self._record("error", reason, str(err))
+                return {"ok": False, "message": str(err)}
+            except Exception as err:  # pragma: no cover - defensive
+                _LOGGER.exception("Unexpected error during branch creation")
+                self._record("error", reason, str(err))
+                return {"ok": False, "message": str(err)}
 
     # ---------------------------------------------------------------- branches
     def list_branches(self) -> list[str]:
