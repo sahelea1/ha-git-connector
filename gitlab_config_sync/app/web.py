@@ -90,6 +90,21 @@ def create_app(manager: SyncManager) -> Flask:
         result = manager.promote(apply=apply, reason="ui")
         return jsonify(result)
 
+    @app.get("/api/update")
+    def api_update_info():
+        info = manager.supervisor.addon_info()
+        return jsonify({
+            "version": info.get("version", __version__),
+            "version_latest": info.get("version_latest", ""),
+            "update_available": info.get("update_available", False),
+        })
+
+    @app.post("/api/update")
+    def api_update():
+        ok = manager.supervisor.update_addon()
+        msg = "Update started — the add-on will restart" if ok else "Update failed"
+        return jsonify({"ok": ok, "message": msg})
+
     @app.errorhandler(500)
     def _server_error(err):  # pragma: no cover - defensive
         _LOGGER.exception("Unhandled error in web request")

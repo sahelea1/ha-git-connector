@@ -3,6 +3,19 @@
 All notable changes to this add-on are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## 1.3.0 - 2026-06-14
+
+### Added
+
+- **Self-update from the dashboard.** When a newer version is available, an
+  update banner appears at the top of the dashboard with a one-click Update
+  button. Uses the Supervisor API to trigger the update — the add-on restarts
+  automatically after updating.
+- Enabled `hassio_api` access so the add-on can query its own version info and
+  trigger self-updates via the Supervisor.
+- New API endpoints: `GET /api/update` (check for updates),
+  `POST /api/update` (trigger self-update).
+
 ## 1.2.0 - 2026-06-13
 
 ### Added

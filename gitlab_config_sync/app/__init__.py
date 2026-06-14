@@ -4,4 +4,4 @@ Continuously backs up the Home Assistant configuration directory to a private
 Git repository and restores it from a branch when something goes wrong.
 """
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"

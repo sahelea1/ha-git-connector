@@ -277,6 +277,28 @@
       font-family: var(--mono); letter-spacing: .6px; line-height: 1.8; }
     a { color: var(--accent); }
 
+    /* ===== Update banner ===== */
+    .update-banner {
+      display: none; align-items: center; gap: 14px; margin-bottom: 16px;
+      background: linear-gradient(90deg, rgba(87,184,148,.12), rgba(87,184,148,.04));
+      border: 1px solid rgba(87,184,148,.35); border-radius: var(--radius);
+      padding: 14px 18px; box-shadow: var(--shadow);
+    }
+    .update-banner.show { display: flex; }
+    .update-banner .update-text {
+      flex: 1; font-family: var(--serif); font-size: 1rem; color: var(--text);
+    }
+    .update-banner .update-text .update-ver {
+      font-family: var(--mono); font-size: .78rem; color: var(--ok); font-weight: 700;
+    }
+    .update-banner button.update-btn {
+      background: linear-gradient(135deg, var(--ok), #3d9a77); border-color: transparent; color: #fff;
+      box-shadow: 0 0 16px rgba(87,184,148,.25); white-space: nowrap;
+    }
+    .update-banner button.update-btn:hover:not(:disabled) {
+      box-shadow: 0 0 22px rgba(87,184,148,.40);
+    }
+
     /* ===== Commit message input ===== */
     .commit-input {
       font-family: var(--mono); font-size: .78rem; letter-spacing: .3px;
@@ -376,6 +398,15 @@
     <p class="tagline">Back up &amp; restore your Home Assistant configuration with Git — elegantly versioned.</p>
 
     <div id="notice" class="notice" style="display:none"></div>
+
+    <div id="update-banner" class="update-banner">
+      <span class="update-text">
+        Update available: <span class="update-ver" id="update-ver"></span>
+      </span>
+      <button type="button" class="update-btn" id="btn-update" onclick="doUpdate(this)">
+        Update Now
+      </button>
+    </div>
 
     <div id="summary" class="summary">
       <span class="dot"></span>
@@ -768,6 +799,8 @@
       if (fromBranch) fromBranch.disabled = on;
       var btnRestoreConfirm = document.getElementById("btn-restore-confirm");
       if (btnRestoreConfirm) btnRestoreConfirm.disabled = on;
+      var btnUpdate = document.getElementById("btn-update");
+      if (btnUpdate) btnUpdate.disabled = on;
       if (btn) {
         if (on) {
           btn.dataset.html = btn.innerHTML;
@@ -1028,8 +1061,46 @@
       }
     }
 
+    async function checkForUpdate() {
+      try {
+        var res = await fetch("api/update", { cache: "no-store" });
+        var data = await res.json();
+        var banner = document.getElementById("update-banner");
+        if (data.update_available && data.version_latest) {
+          document.getElementById("update-ver").textContent =
+            "v" + data.version_latest + " (current: v" + (data.version || "?") + ")";
+          banner.classList.add("show");
+        } else {
+          banner.classList.remove("show");
+        }
+      } catch (e) { /* ignore — supervisor may not be available */ }
+    }
+
+    async function doUpdate(btn) {
+      if (busy) return;
+      if (!confirm("Update the add-on to the latest version?\n\nThe add-on will restart after updating.")) return;
+      setBusy(btn, true);
+      try {
+        var res = await fetch("api/update", {
+          method: "POST"
+        });
+        var data = await res.json();
+        if (data.ok) {
+          toast("Update started — the add-on will restart shortly", "ok");
+        } else {
+          toast(data.message || "Update failed", "err");
+        }
+      } catch (e) {
+        toast("Update request failed: " + e, "err");
+      } finally {
+        setBusy(btn, false);
+      }
+    }
+
     refresh();
     setInterval(refresh, 7000);
+    checkForUpdate();
+    setInterval(checkForUpdate, 300000);
   </script>
 </body>
 </html>

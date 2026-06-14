@@ -20,6 +20,7 @@ from dataclasses import dataclass
 _LOGGER = logging.getLogger("gitsync.supervisor")
 
 _BASE_URL = "http://supervisor/core/api"
+_HASSIO_URL = "http://supervisor"
 
 
 @dataclass
@@ -39,6 +40,30 @@ class Supervisor:
     # ------------------------------------------------------------------ helper
     def _post(self, path: str, timeout: float = 30.0) -> tuple[int, dict]:
         url = f"{_BASE_URL}{path}"
+        request = urllib.request.Request(url, data=b"", method="POST")
+        request.add_header("Authorization", f"Bearer {self._token}")
+        request.add_header("Content-Type", "application/json")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            body = response.read().decode("utf-8", "replace")
+            try:
+                payload = json.loads(body) if body else {}
+            except ValueError:
+                payload = {"raw": body}
+            return response.status, payload
+
+    def _get(self, url: str, timeout: float = 15.0) -> tuple[int, dict]:
+        request = urllib.request.Request(url, method="GET")
+        request.add_header("Authorization", f"Bearer {self._token}")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            body = response.read().decode("utf-8", "replace")
+            try:
+                payload = json.loads(body) if body else {}
+            except ValueError:
+                payload = {"raw": body}
+            return response.status, payload
+
+    def _hassio_post(self, path: str, timeout: float = 30.0) -> tuple[int, dict]:
+        url = f"{_HASSIO_URL}{path}"
         request = urllib.request.Request(url, data=b"", method="POST")
         request.add_header("Authorization", f"Bearer {self._token}")
         request.add_header("Content-Type", "application/json")
@@ -78,6 +103,35 @@ class Supervisor:
             return True
         except (urllib.error.URLError, OSError):
             return True
+
+    # ----------------------------------------------------------- add-on update
+    def addon_info(self) -> dict:
+        """Return add-on info from the Supervisor, including update status."""
+        if not self.available:
+            return {}
+        try:
+            status, payload = self._get(f"{_HASSIO_URL}/addons/self/info")
+            if status == 200:
+                return payload.get("data", {})
+        except (urllib.error.URLError, OSError) as err:
+            _LOGGER.warning("Failed to get add-on info: %s", err)
+        return {}
+
+    def update_addon(self) -> bool:
+        """Trigger a self-update via the Supervisor API."""
+        if not self.available:
+            _LOGGER.warning("Cannot update: Supervisor API unavailable")
+            return False
+        try:
+            status, _ = self._hassio_post("/addons/self/update", timeout=300.0)
+            if status == 200:
+                _LOGGER.info("Add-on update triggered successfully")
+                return True
+            _LOGGER.warning("Add-on update returned HTTP %s", status)
+            return False
+        except (urllib.error.URLError, OSError) as err:
+            _LOGGER.warning("Add-on update failed: %s", err)
+            return False
 
     def _fire(self, path: str, label: str) -> bool:
         if not self.available:
